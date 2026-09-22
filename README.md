@@ -13,6 +13,10 @@
   <kbd>Super</kbd> + <kbd>Tab</kbd> &nbsp;·&nbsp; live previews &nbsp;·&nbsp; app icons &nbsp;·&nbsp; monitor pins &nbsp;·&nbsp; no network access
 </p>
 
+<p align="center">
+  <img src="preview.png" alt="Vista: a large live preview of the selected workspace above a filmstrip of every workspace, next to the Vista settings panel" width="900">
+</p>
+
 ---
 
 **You have ten workspaces and no idea what's on them.** Was that doc on 3 or 4?
