@@ -35,6 +35,7 @@ function workspaceRules(pins) {
 
 function reload() { return [HYPRCTL, "reload"] }
 function listWorkspaceRules() { return [HYPRCTL, "workspacerules", "-j"] }
+function listBinds() { return [HYPRCTL, "binds", "-j"] }
 function superIsDown() {
   return [HYPRCTL, "eval", 'error(tostring(hl.is_key_down("Super_L") or hl.is_key_down("Super_R")))']
 }
@@ -67,4 +68,32 @@ function monitorLabel(monitor) {
   if (name.indexOf("eDP") === 0) return "Laptop"
   var ipc = monitor.lastIpcObject || {}
   return Safe.plain(ipc.model || name, 24) || Safe.plain(name, 24)
+}
+
+// Whether SUPER+TAB and SUPER+SHIFT+TAB reach Vista, from `hyprctl binds -j`.
+// Lua binds all report dispatcher "__lua", so Vista's own binds are known by
+// the "Vista:" description bindings.lua gives them. Every bind on either key
+// must be Vista's: another one there (Omarchy's default, another switcher)
+// fires as well. Returns "ok", "missing" (no Vista bind) or "conflict".
+var SUPER = 64
+var SHIFT = 1
+
+function bindStatus(binds) {
+  if (!Array.isArray(binds)) return "ok"   // unreadable: never nag on a guess
+  var combos = [SUPER, SUPER | SHIFT]
+  var status = "ok"
+  for (var c = 0; c < combos.length; c++) {
+    var vista = 0
+    var other = 0
+    for (var i = 0; i < binds.length && i < 5000; i++) {
+      var b = binds[i]
+      if (!b || typeof b !== "object" || b.modmask !== combos[c] || b.submap) continue
+      if (String(b.key || "").toUpperCase() !== "TAB") continue
+      if (String(b.description || "").indexOf("Vista:") === 0) vista++
+      else other++
+    }
+    if (vista === 0) return "missing"
+    if (other > 0) status = "conflict"
+  }
+  return status
 }

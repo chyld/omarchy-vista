@@ -1,4 +1,4 @@
-// Unit tests for Safe.js and Hypr.js, the code every untrusted value passes
+// Unit tests for Safe.js, Hypr.js and Omarchy.js, the code every untrusted value passes
 // through. Run with: node --test tests/
 import { test } from "node:test"
 import assert from "node:assert/strict"
@@ -19,6 +19,7 @@ function load(file, globals = {}) {
 
 const Safe = load("Safe.js")
 const Hypr = load("Hypr.js", { Safe })
+const Omarchy = load("Omarchy.js")
 
 test("workspaceId accepts 1..50 only", () => {
   assert.equal(Safe.workspaceId(1), "1")
@@ -107,4 +108,49 @@ test("monitor keys prefer the EDID description and fall back to the name", () =>
   assert.equal(Hypr.monitorKey({ name: "DP-2", lastIpcObject: {} }), "DP-2")
   assert.equal(Hypr.monitorLabel(m), "bX27/b")
   assert.equal(Hypr.monitorLabel({ name: "eDP-1" }), "Laptop")
+})
+
+test("bindStatus finds Vista's SUPER+TAB binds and any that compete", () => {
+  const bind = (modmask, description, extra = {}) => ({ modmask, key: "TAB", submap: "", description, ...extra })
+  const next = bind(64, "Vista: next workspace")
+  const prev = bind(65, "Vista: previous workspace")
+  const other = [bind(8, "Alt-Tab switcher"), bind(68, "Former workspace")]
+  assert.equal(Hypr.bindStatus([...other, next, prev]), "ok")
+  assert.equal(Hypr.bindStatus(other), "missing")
+  assert.equal(Hypr.bindStatus([next]), "missing")
+  assert.equal(Hypr.bindStatus([next, prev, bind(64, "Next workspace")]), "conflict")
+  assert.equal(Hypr.bindStatus([next, prev, bind(65, "Previous workspace")]), "conflict")
+  // A bind inside a submap only fires in that submap.
+  assert.equal(Hypr.bindStatus([next, prev, bind(64, "x", { submap: "resize" })]), "ok")
+  assert.equal(Hypr.bindStatus([next, prev, null, "x", 3]), "ok")
+  // An unreadable reply never produces a warning.
+  for (const bad of [null, undefined, {}, "[]", 5]) assert.equal(Hypr.bindStatus(bad), "ok", String(bad))
+})
+
+test("Omarchy commands use a plain OMARCHY_PATH or the packaged one", () => {
+  assert.equal(Omarchy.bin("/usr/share/omarchy"), "/usr/share/omarchy/bin")
+  assert.equal(Omarchy.bin("/home/me/src/omarchy"), "/home/me/src/omarchy/bin")
+  for (const bad of ["", "relative/path", "/a/../b", "/a b", "/a;b", "/a\nb", null, undefined, 5])
+    assert.equal(Omarchy.bin(bad), "/usr/share/omarchy/bin", String(bad))
+})
+
+test("the notification is critical, replaces only a real id, and opens the homepage on click", () => {
+  const argv = Array.from(Omarchy.notify("", "missing", "0"))
+  assert.equal(argv[0], "/usr/share/omarchy/bin/omarchy-notification-send")
+  assert.deepEqual(argv.slice(1, 4), ["-p", "-r", "0"])
+  assert.equal(argv[argv.indexOf("-u") + 1], "critical")
+  assert.ok(argv.includes("Vista needs its keybindings"))
+  assert.deepEqual(argv.slice(-3), ["--exec", "/usr/share/omarchy/bin/omarchy-launch-browser", "https://github.com/chyld/omarchy-vista"])
+  assert.ok(Array.from(Omarchy.notify("", "conflict", "7")).includes("Vista needs Super+Tab to itself"))
+  assert.equal(Omarchy.notify("", "missing", "42")[3], "42")
+  for (const bad of ["-1", "01", "4 2", "x", "--exec", null, 12345678901])
+    assert.equal(Omarchy.notify("", "missing", bad)[3], "0", String(bad))
+})
+
+test("one dismiss clears either headline", () => {
+  assert.deepEqual(Array.from(Omarchy.dismiss("")), ["/usr/share/omarchy/bin/omarchy-notification-dismiss", "Vista needs"])
+  for (const status of ["missing", "conflict"]) {
+    const argv = Array.from(Omarchy.notify("", status, "0"))
+    assert.ok(argv.some((a) => a.startsWith(Omarchy.HEADLINE_PREFIX + " ")), status)
+  }
 })

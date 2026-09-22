@@ -61,7 +61,9 @@ hl.layer_rule({ match = { namespace = "chyld-vista" }, no_anim = true })
 
 They replace Omarchy's default `SUPER + TAB` (next workspace) and
 `SUPER + SHIFT + TAB` (previous workspace). Hyprland picks them up when you
-save the file. Vista never edits your Hyprland files.
+save the file. Vista never edits your Hyprland files. If the bindings are
+missing, or another binding still uses `SUPER + TAB`, Vista tells you with a
+desktop notification.
 
 Requirements: Omarchy 4 (omarchy-shell) with the Hyprland Lua config.
 
@@ -95,11 +97,13 @@ Settings are saved on Vista's bar entry in `~/.config/omarchy/shell.json`, throu
   - window and workspace state from Hyprland
   - app icons from desktop entries and the icon theme
   - the current Omarchy wallpaper at `~/.local/state/omarchy/current/background`
-- **Commands:** all run as `/usr/bin/hyprctl` with an argument list, never through a shell.
+- **Commands:** all run with an argument list, never through a shell. Every one is `/usr/bin/hyprctl` except the notification below.
   - `dispatch` to switch workspace, and to move a pinned workspace onto its monitor.
   - `eval` to ask whether Super is still held. It runs only while the switcher is open, one query at a time, for at most 30 seconds per opening.
   - `eval` to add a workspace rule for each pin.
   - `reload` when you unpin a workspace, then `workspacerules -j` to move it back to the monitor your own config names.
+  - `binds -j` a few seconds after the shell starts and after each Hyprland config reload, to check that `SUPER + TAB` reaches Vista.
+- **Notification:** when that check finds Vista's keybindings missing, or another binding still on `SUPER + TAB`, Vista shows one desktop notification through Omarchy's `omarchy-notification-send`. Clicking it opens the Vista homepage in your browser with `omarchy-launch-browser`. While the problem lasts it shows again after each Hyprland config reload (Hyprland reloads when you save one of its files), replacing the previous notification instead of adding another. It stays until you click or dismiss it, and Vista removes it with `omarchy-notification-dismiss` once the bindings are right, or when Vista is turned off or removed.
 - **Monitor pins** are runtime Hyprland workspace rules. They take priority over your config's rule for that workspace, and nothing is written to your Hyprland files.
   - Hyprland drops them on a config reload, so Vista applies them again after every reload and when a monitor connects.
   - Pins are stored by the monitor's EDID description, so they survive a monitor moving to another port.
@@ -128,11 +132,18 @@ pin in `~/.config/omarchy/shell.json`. Then:
 | `SuperWatch.qml` | Asks Hyprland whether Super is still held |
 | `PinManager.qml` | Monitor pins as runtime Hyprland workspace rules |
 | `AppIcons.qml` | App icons per workspace, bounded cache |
+| `BindCheck.qml` | Notifies when the `SUPER + TAB` bindings are missing or overridden |
 | `Hypr.js` | Every `hyprctl` command Vista runs |
+| `Omarchy.js` | Every Omarchy command Vista runs: the keybindings notification |
 | `Safe.js` | Validation for every value that isn't a literal in the code |
 | `Settings.qml`, `Logo.qml` | The bar icon and its settings popup |
 
 Run the tests with `node --test tests/`.
+
+Saving a file here reloads the bar icon and settings popup, but not the
+switcher service: the manifest sets `keepLoaded`, and the shell keeps such
+services running across plugin reloads. After changing `Service.qml` or
+anything it loads, run `omarchy restart shell`.
 
 ## License
 

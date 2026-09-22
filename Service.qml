@@ -16,7 +16,9 @@ import "Hypr.js" as Hypr
 //   SuperWatch.qml        asks Hyprland whether SUPER is still held
 //   PinManager.qml        monitor pins as runtime Hyprland workspace rules
 //   AppIcons.qml          app icons per workspace, bounded cache
+//   BindCheck.qml         notifies when the SUPER+TAB bindings are missing
 //   Hypr.js               every hyprctl command Vista runs
+//   Omarchy.js            every Omarchy command Vista runs (the notification)
 //   Safe.js               validation of everything that is not a literal
 //   Settings.qml          the bar icon and its settings popup
 //
@@ -88,6 +90,8 @@ Item {
   onShellChanged: if (vista.shell) Qt.callLater(function() { pins.ready = true })
 
   AppIcons { id: icons }
+
+  BindCheck {}
 
   SuperWatch {
     id: superWatch
