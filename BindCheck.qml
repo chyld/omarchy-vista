@@ -17,7 +17,8 @@ import "Omarchy.js" as Omarchy
 // earlier session is dismissed before the first new one, and any Vista
 // notification is dismissed once the bindings are right or Vista unloads.
 // The bind list is read in chunks under a 1 MiB budget with a 3 s deadline;
-// an unreadable reply changes nothing.
+// an unreadable reply changes nothing. Sending and dismissing each have a
+// 5 s deadline.
 Item {
   id: check
 
@@ -78,9 +79,14 @@ Item {
 
   Process {
     id: dismisser
+    onStarted: dismissDeadline.restart()
     onExited: function(code) {
-      check.mayBeShowing = false
-      check.notificationId = "0"
+      dismissDeadline.stop()
+      // A failed or killed dismiss may have left the notification up.
+      if (code === 0) {
+        check.mayBeShowing = false
+        check.notificationId = "0"
+      }
       var next = check.pendingSend
       check.pendingSend = null
       if (next) check.send(next)
@@ -96,14 +102,20 @@ Item {
       splitMarker: ""
       onRead: function(chunk) { if (sender.buf.length < 64) sender.buf += chunk }
     }
-    onStarted: buf = ""
+    onStarted: { buf = ""; sendDeadline.restart() }
     onExited: function(code) {
+      sendDeadline.stop()
       var id = buf.trim()
       buf = ""
       if (code === 0 && /^[1-9][0-9]{0,9}$/.test(id)) check.notificationId = id
       Qt.callLater(check.flush)
     }
   }
+
+  // Both commands talk to the shell over D-Bus and finish in well under a
+  // second; a hung one is killed so Vista never stays busy.
+  Timer { id: sendDeadline; interval: 5000; onTriggered: sender.signal(9) }
+  Timer { id: dismissDeadline; interval: 5000; onTriggered: dismisser.signal(9) }
 
   // The shell and its notification service start alongside this plugin.
   Timer { id: startDelay; interval: 3000; running: true; onTriggered: check.run() }
