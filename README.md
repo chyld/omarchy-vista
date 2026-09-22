@@ -1,16 +1,41 @@
-# Vista
+<p align="center">
+  <img src="icon.svg" alt="Vista" width="112">
+</p>
 
-Alt-tab for workspaces, for the [Omarchy](https://omarchy.org) shell.
+<h1 align="center">Vista</h1>
 
-Hold **Super** and tap **Tab**. The selected workspace fills a large live
-preview, with its number, the icons of the apps on it and its last window
-title underneath, above a filmstrip of every workspace. Keep tapping Tab to
-move through them in numeric order, and let go of Super to switch. A quick tap
-switches to the next workspace without showing anything.
+<p align="center">
+  <b>See every workspace before you jump to it.</b><br>
+  Alt-tab for workspaces, built for the <a href="https://omarchy.org">Omarchy</a> shell.
+</p>
 
-A bar icon opens the settings: how many workspaces to show, preview and
-thumbnail sizes, app icons, wallpaper, animations, and which monitor each
-workspace is pinned to.
+<p align="center">
+  <kbd>Super</kbd> + <kbd>Tab</kbd> &nbsp;·&nbsp; live previews &nbsp;·&nbsp; app icons &nbsp;·&nbsp; monitor pins &nbsp;·&nbsp; no network access
+</p>
+
+---
+
+**You have ten workspaces and no idea what's on them.** Was that doc on 3 or 4?
+Is the terminal on 2? Stop cycling blind.
+
+**Hold <kbd>Super</kbd>, tap <kbd>Tab</kbd>.** Your screen becomes a view of every
+workspace. The one you're about to land on fills a big **live** preview of its actual
+windows. Under it are a giant workspace number, the icons of its apps, and its
+last window title. Along the bottom, a filmstrip of all
+your workspaces shows what's on each one, with a bar sliding under your pick.
+
+**Let go, and you're there.** Or just tap it: a quick <kbd>Super</kbd>+<kbd>Tab</kbd>
+jumps to the next workspace with nothing drawn at all.
+
+## Why you'll keep it
+
+- 🔭 **Live previews.** Real window contents at their real positions, captured straight from each window, with nothing saved to disk.
+- 🧩 **Know it at a glance.** App icons and a giant number on every workspace.
+- ⚡ **Built for muscle memory.** Hold, tap, tap, release. `Shift+Tab` goes back, and `1`–`0`, the arrows, the mouse and the wheel all work too.
+- 🖥️ **Pin workspaces to monitors.** Laptop plus external? Put 1 on the laptop and 2–5 on the big screen with a click. Pins follow the monitor even if it moves to another port.
+- 🎛️ **Settings with a click, not a config file.** A bar icon opens a live settings panel with a scale sketch that redraws as you change sizes.
+- 🎨 **Matches your theme.** Colours, fonts and corner radius come from your current Omarchy theme.
+- 🔒 **Stays local.** No network access, nothing written except its own settings, and every label rendered as plain text. Details [below](#what-vista-does-on-your-system).
 
 ## Install
 

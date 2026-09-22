@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "author": "Chyld Medford",
   "license": "MIT",
-  "description": "Alt-tab for workspaces: hold Super and tap Tab for a large live preview of each workspace, with app icons and a filmstrip of them all. Release to switch. Pin workspaces to monitors from the bar.",
+  "description": "See every workspace before you jump to it. Hold Super, tap Tab: a big live preview, app icons and a filmstrip of all your workspaces. Release to switch. Plus one-click monitor pins.",
   "homepage": "https://github.com/chyld/omarchy-vista",
   "kinds": [
     "service",
