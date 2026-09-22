@@ -25,7 +25,19 @@ Item {
   readonly property real monW: monitor ? monitor.width / Math.max(0.1, monitor.scale) : width
   readonly property real monH: monitor ? monitor.height / Math.max(0.1, monitor.scale) : height
   readonly property real k: Math.min(width / Math.max(1, monW), height / Math.max(1, monH))
-  readonly property var toplevels: workspace && active ? workspace.toplevels.values : []
+  // At most 32 windows per preview, most recently focused first, so a crowded
+  // workspace cannot start an unbounded number of screen captures.
+  readonly property var toplevels: {
+    if (!workspace || !active) return []
+    var list = workspace.toplevels.values.slice(0, 256)
+    list.sort(function(a, b) { return focusOf(a) - focusOf(b) })
+    return list.slice(0, 32)
+  }
+
+  function focusOf(toplevel) {
+    var ipc = toplevel.lastIpcObject
+    return ipc && ipc.focusHistoryID !== undefined ? Number(ipc.focusHistoryID) : 99
+  }
 
   Rectangle {
     id: maskShape

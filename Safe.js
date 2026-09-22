@@ -10,7 +10,8 @@ var MAX_PINS = 50
 var MAX_MONITOR_KEY = 256
 var MAX_TITLE = 256
 
-var CONTROL = /[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g
+// C0/C1 controls, line/paragraph separators, BOM, and bidi marks and overrides.
+var CONTROL = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff]/g
 
 // A workspace id as a string of 1..MAX_WORKSPACE, or "" when it is not one.
 function workspaceId(value) {
@@ -33,9 +34,11 @@ function pins(value) {
   var out = Object.create(null)
   if (!value || typeof value !== "object" || Array.isArray(value)) return out
   var n = 0
+  var seen = 0
   for (var k in value) {
+    // Bound the walk itself, not only the result: the object is input.
+    if (++seen > MAX_PINS * 4 || n >= MAX_PINS) break
     if (!Object.prototype.hasOwnProperty.call(value, k)) continue
-    if (n >= MAX_PINS) break
     var id = workspaceId(k)
     var key = monitorKey(value[k])
     if (!id || !key) continue

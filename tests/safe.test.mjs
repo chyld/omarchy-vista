@@ -43,6 +43,13 @@ test("pins keeps only valid entries in a null-prototype map", () => {
   for (const bad of [null, [], "x", 3]) assert.deepEqual(Object.keys(Safe.pins(bad)), [])
 })
 
+test("pins bounds the walk over a huge object", () => {
+  const huge = {}
+  for (let i = 0; i < 100000; i++) huge["junk" + i] = "HDMI-A-1"
+  huge["1"] = "HDMI-A-1"   // integer-like keys enumerate first in JS
+  assert.deepEqual(Object.keys(Safe.pins(huge)), ["1"])
+})
+
 test("pins caps the number of entries", () => {
   const many = {}
   for (let i = 1; i <= 50; i++) many[String(i)] = "HDMI-A-1"
@@ -59,6 +66,12 @@ test("plain strips markup, controls and bidi, and caps length", () => {
   assert.equal(Safe.plain("a\u0000b‮c\u0007"), "abc")
   assert.equal(Safe.plain("x".repeat(100), 10), "x".repeat(10))
   assert.equal(Safe.plain(null), "")
+})
+
+test("plain and title strip separators, BOM and bidi marks", () => {
+  const s = "a\u2028b\u2029c\ufeffd\u061ce\u202ef"
+  assert.equal(Safe.plain(s), "abcdef")
+  assert.equal(Safe.title(s), "abcdef")
 })
 
 test("title removes controls and caps at 256", () => {

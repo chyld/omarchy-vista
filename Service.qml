@@ -108,7 +108,6 @@ Item {
   property var entries: []            // [{ id, workspace }] in numeric order
   property int selectedIndex: 0
   property var targetMonitor: null
-  property real openedAt: 0
   property real lastStepAt: 0
 
   readonly property var selectedEntry: selectedIndex >= 0 && selectedIndex < entries.length ? entries[selectedIndex] : null
@@ -198,7 +197,6 @@ Item {
     vista.selectedIndex = current !== -1 ? current : (direction > 0 ? vista.entries.length - 1 : 0)
     vista.cycle(direction)
 
-    vista.openedAt = Date.now()
     vista.revealed = false
     vista.presented = true
     vista.opened = true
