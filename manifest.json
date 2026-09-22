@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "chyld.vista",
+  "name": "Vista",
+  "version": "0.1.0",
+  "author": "Chyld Medford",
+  "license": "MIT",
+  "description": "Alt-tab for workspaces: hold Super and tap Tab for a large live preview of each workspace, with app icons and a filmstrip of them all. Release to switch. Pin workspaces to monitors from the bar.",
+  "homepage": "https://github.com/chyld/omarchy-vista",
+  "kinds": [
+    "service",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml",
+    "barWidget": "Settings.qml"
+  },
+  "barWidget": {
+    "displayName": "Vista",
+    "description": "Settings for Vista, the workspace switcher",
+    "category": "Compositor",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
