@@ -89,6 +89,22 @@ pin in `~/.config/omarchy/shell.json`. Then:
 - Delete the Vista lines you pasted into `~/.config/hypr/bindings.lua`, which brings back Omarchy's defaults for `SUPER + TAB` and `SUPER + SHIFT + TAB`.
 - Pins that were active stay in effect until Hyprland's config next reloads (`hyprctl reload`, or saving any Hyprland config file) or you log out. Nothing else remains.
 
+## Development
+
+| File | Role |
+|---|---|
+| `Service.qml` | Settings, switcher state, input, and opening, committing and closing the switcher |
+| `Switcher.qml` | The overlay window (view only) |
+| `WorkspacePreview.qml` | One workspace drawn to scale with live window captures |
+| `SuperWatch.qml` | Asks Hyprland whether Super is still held |
+| `PinManager.qml` | Monitor pins as runtime Hyprland workspace rules |
+| `AppIcons.qml` | App icons per workspace, bounded cache |
+| `Hypr.js` | Every `hyprctl` command Vista runs |
+| `Safe.js` | Validation for every value that isn't a literal in the code |
+| `Settings.qml`, `Logo.qml` | The bar icon and its settings popup |
+
+Run the tests with `node --test tests/`.
+
 ## License
 
 MIT

@@ -4,10 +4,11 @@ import qs.Ui
 import Quickshell.Hyprland
 import "Defaults.js" as Defaults
 import "Safe.js" as Safe
+import "Hypr.js" as Hypr
 
-// Bar icon for Vista. Clicking it opens a settings popup;
-// every change is written straight to this widget's entry in shell.json,
-// which the switcher watches, so it applies immediately.
+// Bar icon for Vista. Clicking it opens the settings popup. Changes show at
+// once, are handed straight to the switcher service (pushToService), and are
+// saved on this widget's entry in shell.json through the host.
 Panel {
   id: root
   moduleName: "chyld.vista"
@@ -41,23 +42,24 @@ Panel {
   readonly property int workspaceCount: Math.max(1, Math.min(Safe.MAX_WORKSPACE, Number(root.value("workspaces")) || 1))
   readonly property var pins: Safe.pins(root.value("pins"))
 
-  // Connected monitors, left to right, keyed by description so a pin
-  // survives the monitor moving to another port.
+  // Connected monitors, left to right. A new pin is saved under the monitor's
+  // EDID description, so it survives the monitor moving to another port; a
+  // pin saved under either key shows as pinned.
   readonly property var monitors: {
     var list = []
     var values = Hyprland.monitors.values
     for (var i = 0; i < values.length && list.length < 8; i++) {
-      var m = values[i]
-      var ipc = m.lastIpcObject || {}
-      var name = String(m.name || "")
-      var key = ipc.description ? Safe.monitorKey("desc:" + ipc.description) : Safe.monitorKey(name)
+      var key = Hypr.monitorKey(values[i])
       if (!key) continue
-      // The model name comes from the monitor's EDID: keep it plain and short.
-      var label = name.indexOf("eDP") === 0 ? "Laptop" : Safe.plain(ipc.model || name, 24)
-      list.push({ key: key, label: label || Safe.plain(name, 24), x: Number(m.x) || 0 })
+      list.push({ key: key, keys: Hypr.monitorKeys(values[i]),
+                  label: Hypr.monitorLabel(values[i]), x: Number(values[i].x) || 0 })
     }
     list.sort(function(a, b) { return a.x - b.x })
     return list
+  }
+
+  function isPinned(workspaceId, monitor) {
+    return monitor.keys.indexOf(root.pins[workspaceId]) !== -1
   }
 
   // Clicking a workspace's chip on a monitor pins it there; clicking the
@@ -68,7 +70,9 @@ Panel {
     if (!id || !key) return
     var next = {}
     for (var k in root.pins) next[k] = root.pins[k]
-    if (next[id] === key) delete next[id]
+    var monitor = null
+    for (var i = 0; i < root.monitors.length; i++) if (root.monitors[i].key === key) monitor = root.monitors[i]
+    if (monitor && root.isPinned(id, monitor)) delete next[id]
     else next[id] = key
     root.set("pins", next)
   }
@@ -400,7 +404,7 @@ Panel {
                     width: chips.chipWidth
                     text: workspaceId
                     bordered: true
-                    selected: root.pins[workspaceId] === monitorRow.modelData.key
+                    selected: root.isPinned(workspaceId, monitorRow.modelData)
                     foreground: root.barForeground
                     // Host-rendered tooltip: the monitor label is EDID data, so strip it again.
                     tooltipText: Safe.plain(selected ? "Unpin workspace " + workspaceId
