@@ -279,9 +279,9 @@ Item {
         }
 
         function syncRegistration() {
-          if (pill.registeredBar) pill.registeredBar.unregisterClickTarget(pill)
+          if (pill.registeredBar && pill.registeredBar.unregisterClickTarget) pill.registeredBar.unregisterClickTarget(pill)
           pill.registeredBar = strip.bar
-          if (pill.registeredBar) pill.registeredBar.registerClickTarget(pill)
+          if (pill.registeredBar && pill.registeredBar.registerClickTarget) pill.registeredBar.registerClickTarget(pill)
         }
 
         Connections {
@@ -292,7 +292,7 @@ Item {
           pill.windows = pill.freshWindows
           pill.syncRegistration()
         }
-        Component.onDestruction: if (pill.registeredBar) pill.registeredBar.unregisterClickTarget(pill)
+        Component.onDestruction: if (pill.registeredBar && pill.registeredBar.unregisterClickTarget) pill.registeredBar.unregisterClickTarget(pill)
 
         width: strip.vertical ? strip.thickness : content.width + Style.space(16)
         height: strip.vertical ? content.height + Style.space(16) : strip.thickness
