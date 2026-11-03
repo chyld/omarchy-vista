@@ -128,3 +128,24 @@ test("pillState: shown here > shown elsewhere > occupied > empty", () => {
   assert.equal(Strip.pillState(false, false, true), "occupied")
   assert.equal(Strip.pillState(false, false, false), "empty")
 })
+
+test("fitIcons: shows as many icons as fit the budget, down to none", () => {
+  const sizes = { fixed: 30, pill: 30, icon: 20, more: 15 }
+  const counts = [2, 6, 0, 3]
+  // Full: 30 + 4*30 + (2+5+0+3)*20 + 15 (the 6-window pill's "+1") = 365
+  assert.equal(Strip.fitIcons(counts, 5, sizes, 365), 5)
+  assert.equal(Strip.fitIcons(counts, 5, sizes, 364), 4)
+  // Three icons: 30 + 120 + (2+3+0+3)*20 + 15 = 325
+  assert.equal(Strip.fitIcons(counts, 5, sizes, 325), 3)
+  assert.equal(Strip.fitIcons(counts, 5, sizes, 100), 0)
+  assert.equal(Strip.fitIcons(counts, 3, sizes, 10000), 3)
+})
+
+test("fitIcons: without a budget or counts it keeps the cap", () => {
+  const sizes = { fixed: 0, pill: 10, icon: 10, more: 10 }
+  assert.equal(Strip.fitIcons([9], 5, sizes, 0), 5)
+  assert.equal(Strip.fitIcons(null, 5, sizes, 100), 5)
+  assert.equal(Strip.fitIcons([9], 5, null, 100), 5)
+  assert.equal(Strip.fitIcons(["x", -3, NaN], 5, sizes, 30), 5)
+  assert.equal(Strip.fitIcons([9], "x", sizes, 100), 0)
+})

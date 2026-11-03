@@ -34,7 +34,7 @@ Item {
   readonly property real barSize: strip.bar && strip.bar.barSize > 0 ? strip.bar.barSize : Style.bar.sizeHorizontal
   readonly property real thickness: Math.max(Style.space(12), strip.barSize - Style.space(8))
   readonly property real iconSize: Math.max(Style.space(12), Math.min(Style.space(18), strip.barSize - Style.space(12)))
-  readonly property int maxIcons: strip.vertical ? Strip.MAX_ICONS_VERTICAL : Strip.MAX_ICONS
+  readonly property int iconCap: strip.vertical ? Strip.MAX_ICONS_VERTICAL : Strip.MAX_ICONS
   readonly property real gap: Style.space(6)
 
   implicitWidth: strip.vertical ? strip.barSize : pills.width + strip.gap + gearButton.width
@@ -85,6 +85,37 @@ Item {
       if (id) map[id] = String(values[i].name)
     }
     return map
+  }
+
+  // How much of the screen the strip may take along the bar: on a horizontal
+  // bar it stops well short of the centred clock. When the pills would not
+  // fit, each shows fewer icons (Strip.fitIcons), down to numbers and "+N".
+  readonly property real budget: {
+    var window = strip.QsWindow.window
+    var screen = window ? window.screen : null
+    if (!screen) return 0
+    return strip.vertical ? screen.height * 0.6 : screen.width * 0.4
+  }
+
+  readonly property var windowCounts: {
+    strip.revision
+    var counts = []
+    for (var i = 0; i < strip.ids.length; i++) {
+      var ws = strip.workspaceById(strip.ids[i])
+      counts.push(ws ? ws.toplevels.values.length : 0)
+    }
+    return counts
+  }
+
+  readonly property int maxIcons: {
+    var spacing = Style.space(6)
+    var numberLength = strip.vertical ? Style.font.body * 1.3 : Style.font.body * 1.2
+    return Strip.fitIcons(strip.windowCounts, strip.iconCap, {
+      fixed: strip.gap + (strip.vertical ? gearButton.height : gearButton.width) + Math.max(0, strip.ids.length - 1) * Style.space(4),
+      pill: Style.space(16) + numberLength,
+      icon: strip.iconSize + spacing,
+      more: spacing + Style.font.caption * 1.6
+    }, strip.budget)
   }
 
   function workspaceById(id) {
@@ -357,7 +388,7 @@ Item {
     bar: strip.bar
     text: "\u{f0493}"   // nf-md-cog
     tooltipText: strip.settingsOpen ? "" : "Vista settings"
-    onPressed: function(button) { strip.settingsRequested() }
+    onPressed: function(button) { if (button === Qt.LeftButton) strip.settingsRequested() }
     onWheelMoved: function(delta) { strip.scroll(delta) }
   }
 }

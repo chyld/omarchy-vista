@@ -92,6 +92,26 @@ function windowsFor(toplevels, maxIcons) {
   return { shown: shown, hidden: valid.length - shown.length + Math.max(0, list.length - MAX_WALK) }
 }
 
+// The most icons per pill (at most maxIcons) that keep the strip within
+// `budget` px along the bar. `counts` is each pill's window count; `sizes`
+// gives the strip's lengths: fixed (gear, gaps), pill (padding and number),
+// icon (one icon and its spacing), more (the "+N" label). With no room even
+// for one icon, pills show their number and "+N".
+function fitIcons(counts, maxIcons, sizes, budget) {
+  var max = Math.max(0, Math.floor(Number(maxIcons)) || 0)
+  if (!Array.isArray(counts) || !sizes || !(Number(budget) > 0)) return max
+  for (var k = max; k > 0; k--) {
+    var total = Number(sizes.fixed) || 0
+    for (var i = 0; i < counts.length; i++) {
+      var n = Math.max(0, Math.floor(Number(counts[i])) || 0)
+      var shown = Math.min(n, k)
+      total += (Number(sizes.pill) || 0) + shown * (Number(sizes.icon) || 0) + (n > shown ? Number(sizes.more) || 0 : 0)
+    }
+    if (total <= budget) return k
+  }
+  return 0
+}
+
 // A pill's look, in precedence order: "here" (shown on this bar's monitor),
 // "elsewhere" (shown on another monitor), "occupied", "empty".
 function pillState(shownHere, shownElsewhere, occupied) {
