@@ -4,6 +4,7 @@ import Quickshell.Hyprland
 import "Defaults.js" as Defaults
 import "Safe.js" as Safe
 import "Hypr.js" as Hypr
+import "Strip.js" as Strip
 
 // Vista: alt-tab for workspaces.
 //
@@ -20,7 +21,9 @@ import "Hypr.js" as Hypr
 //   Hypr.js               every hyprctl command Vista runs
 //   Omarchy.js            every Omarchy command Vista runs (the notification)
 //   Safe.js               validation of everything that is not a literal
-//   Settings.qml          the bar icon and its settings popup
+//   Settings.qml          the bar entry: workspace strip + settings popup
+//   WorkspaceStrip.qml    the bar's workspace pills, app icons and gear
+//   Strip.js              the workspace list and strip logic, shared
 //
 // The keybinding sends a Hyprland global shortcut (see bindings.lua), so a
 // press reaches this long-running service without spawning a process.
@@ -37,8 +40,8 @@ Item {
 
   // Settings live on this plugin's bar entry in shell.json, saved by the host
   // when the settings popup changes them; Vista never reads the file. The bar
-  // icon hands its current settings straight to this service. Without the
-  // icon, the host's copy of the bar config is used.
+  // entry hands its current settings straight to this service. Without the
+  // bar entry, the host's copy of the bar config is used.
   property var pushedSettings: null
 
   readonly property var settings: {
@@ -116,20 +119,19 @@ Item {
 
   readonly property var selectedEntry: selectedIndex >= 0 && selectedIndex < entries.length ? entries[selectedIndex] : null
 
-  // Always 1..workspaceCount, plus any other normal workspace that exists, up
-  // to Safe.MAX_WORKSPACE.
+  // The same list the bar's workspace strip shows (Strip.workspaceIds):
+  // always 1..workspaceCount, plus any other normal workspace that exists.
   function buildEntries() {
     var values = Hyprland.workspaces.values
     var existing = Object.create(null)
-    var ids = []
-    for (var n = 1; n <= vista.workspaceCount; n++) ids.push(n)
-    for (var i = 0; i < values.length; i++) {
+    var raw = []
+    for (var i = 0; i < values.length && i < 200; i++) {
       var id = Safe.workspaceId(values[i].id)
       if (!id) continue
       existing[id] = values[i]
-      if (Number(id) > vista.workspaceCount) ids.push(Number(id))
+      raw.push(Number(id))
     }
-    ids.sort(function(a, b) { return a - b })
+    var ids = Strip.workspaceIds(vista.workspaceCount, raw)
     var list = []
     for (var k = 0; k < ids.length; k++) list.push({ id: ids[k], workspace: existing[String(ids[k])] || null })
     vista.entries = list

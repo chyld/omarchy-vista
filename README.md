@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <kbd>Super</kbd> + <kbd>Tab</kbd> &nbsp;·&nbsp; live previews &nbsp;·&nbsp; app icons &nbsp;·&nbsp; monitor pins &nbsp;·&nbsp; no network access
+  <kbd>Super</kbd> + <kbd>Tab</kbd> &nbsp;·&nbsp; live previews &nbsp;·&nbsp; a workspace bar with app icons &nbsp;·&nbsp; monitor pins &nbsp;·&nbsp; no network access
 </p>
 
 <p align="center">
@@ -31,13 +31,17 @@ your workspaces shows what's on each one, with a bar sliding under your pick.
 **Let go, and you're there.** Or just tap it: a quick <kbd>Super</kbd>+<kbd>Tab</kbd>
 jumps to the next workspace with nothing drawn at all.
 
+**And in the bar,** Vista replaces Omarchy's workspace numbers with a strip that
+shows the apps open on every workspace. Click a workspace to go there, click an
+app's icon to jump to that window, or scroll to move along.
+
 ## Why you'll keep it
 
 - 🔭 **Live previews.** Real window contents at their real positions, captured straight from each window, with nothing saved to disk.
-- 🧩 **Know it at a glance.** App icons and a giant number on every workspace.
+- 🧩 **Know it at a glance.** App icons and a giant number on every workspace, in the switcher and in the bar.
 - ⚡ **Built for muscle memory.** Hold, tap, tap, release. `Shift+Tab` goes back, and `1`–`0`, the arrows, the mouse and the wheel all work too.
 - 🖥️ **Pin workspaces to monitors.** Laptop plus external? Put 1 on the laptop and 2–5 on the big screen with a click. Pins follow the monitor even if it moves to another port.
-- 🎛️ **Settings with a click, not a config file.** A bar icon opens a live settings panel with a scale sketch that redraws as you change sizes.
+- 🎛️ **Settings with a click, not a config file.** The gear at the end of Vista's workspace strip opens a live settings panel with a scale sketch that redraws as you change sizes.
 - 🎨 **Matches your theme.** Colours, fonts and corner radius come from your current Omarchy theme.
 - 🔒 **Stays local.** No network access, nothing written except its own settings, and every label rendered as plain text. Details [below](#what-vista-does-on-your-system).
 
@@ -45,7 +49,27 @@ jumps to the next workspace with nothing drawn at all.
 
 ```bash
 omarchy plugin add https://github.com/chyld/omarchy-vista --enable
+omarchy plugin disable omarchy.workspaces
 ```
+
+When `plugin add` asks for a bar section, keep `left`, which it preselects: Vista's workspace strip
+lands right after Omarchy's workspaces widget, which the second line then
+takes off the bar, so the strip sits where it was.
+
+**Upgrading from Vista 0.2,** whose bar entry was a single icon, usually on the
+right: move it next to Omarchy's workspaces widget first, while that widget is
+still on the bar, then take that widget off and restart the shell so the
+switcher picks up the change:
+
+```bash
+omarchy plugin update chyld.vista
+omarchy bar move chyld.vista --after omarchy.workspaces
+omarchy plugin disable omarchy.workspaces
+omarchy restart shell
+```
+
+If Omarchy's workspaces widget is already gone, use
+`omarchy bar move chyld.vista --section left` instead.
 
 Vista needs two keybindings, which you add yourself. Paste these lines into
 `~/.config/hypr/bindings.lua` (the same lines are in
@@ -76,6 +100,31 @@ Requirements: Omarchy 4 (omarchy-shell) with the Hyprland Lua config.
 
 ## Use
 
+### In the bar
+
+| Do | Does |
+|---|---|
+| Click a workspace | go there; one that doesn't exist yet is created on the monitor whose bar you clicked |
+| Click an app icon | focus that window, on whichever workspace and monitor it's on |
+| Hover an app icon | show the window's title |
+| Scroll over the strip | move to the previous / next workspace on that bar's monitor (stops at the ends) |
+| Click the gear | open Vista's settings |
+
+Each pill is one workspace: its number, then an icon for each window on it
+(up to five, then `+N`). The workspace a monitor shows is outlined in your
+theme's accent on that monitor's bar, and faintly on the others; the focused
+window's icon is highlighted.
+
+Workspace numbers are Hyprland's own, the same on every bar and the same as
+the switcher's. With Omarchy's per-monitor workspaces turned on, a second
+monitor's workspaces are 11–20 and show as 11–20.
+
+Omarchy's workspaces widget also shows the active workspace's layout (tiling,
+scrolling or floating) and changes it when clicked. Vista's strip doesn't;
+<kbd>Super</kbd> + <kbd>L</kbd> still cycles the layout.
+
+### The switcher
+
 | Keys | Does |
 |---|---|
 | Hold `Super`, tap `Tab` / `Shift+Tab` | open, then move to the next / previous workspace (wraps) |
@@ -87,12 +136,12 @@ Requirements: Omarchy 4 (omarchy-shell) with the Hyprland Lua config.
 
 ## Settings
 
-Click the Vista icon in the bar. Changes apply immediately.
+Click the gear at the end of Vista's workspace strip. Changes apply immediately.
 
-- **Workspaces**: always show 1 to N (3, 5, 8 or 10); any other workspace that exists is added in numeric order.
+- **Workspaces**: always show 1 to N (3, 5, 8 or 10); any other workspace that exists is added in numeric order, up to 20 in all. The bar and the switcher show the same list.
 - **Preview** and **Thumbnails**: small, medium or large.
 - **Pin to monitor**: click a workspace on a monitor's row to pin it there, and click it again to unpin it.
-- **App icons**, **Wallpaper**, **Animations**: on or off.
+- **App icons** (in the bar and the switcher), **Wallpaper**, **Animations**: on or off.
 
 Settings are saved on Vista's bar entry in `~/.config/omarchy/shell.json`, through Omarchy's own plugin settings API.
 
@@ -105,11 +154,13 @@ Settings are saved on Vista's bar entry in `~/.config/omarchy/shell.json`, throu
   - app icons from desktop entries and the icon theme
   - the current Omarchy wallpaper at `~/.local/state/omarchy/current/background`
 - **Commands:** all run with an argument list, never through a shell. Every one is `/usr/bin/hyprctl` except the notification below.
-  - `dispatch` to switch workspace, and to move a pinned workspace onto its monitor.
+  - `dispatch` to switch workspace, to move a pinned workspace onto its monitor, and, from the bar, to focus a window or a monitor you click.
+  - `eval` from the bar to focus a monitor and then a workspace that doesn't exist yet, so it's created on that monitor.
   - `eval` to ask whether Super is still held. It runs only while the switcher is open, one query at a time, for at most 30 seconds per opening.
   - `eval` to add a workspace rule for each pin.
   - `reload` when you unpin a workspace, then `workspacerules -j` to move it back to the monitor your own config names.
   - `binds -j` a few seconds after the shell starts and after each Hyprland config reload, to check that `SUPER + TAB` reaches Vista.
+- **Refreshes:** when Hyprland reports a window or workspace change, the bar asks Quickshell to re-read Hyprland's window and workspace state. Nothing polls.
 - **Notification:** when that check finds Vista's keybindings missing, or another binding still on `SUPER + TAB`, Vista shows one desktop notification through Omarchy's `omarchy-notification-send`. Clicking it opens the Vista homepage in your browser with `omarchy-launch-browser`. While the problem lasts it shows again after each Hyprland config reload (Hyprland reloads when you save one of its files), replacing the previous notification instead of adding another. It stays until you click or dismiss it, and Vista removes it with `omarchy-notification-dismiss` once the bindings are right, or when Vista is turned off or removed.
 - **Monitor pins** are runtime Hyprland workspace rules. They take priority over your config's rule for that workspace, and nothing is written to your Hyprland files.
   - Hyprland drops them on a config reload, so Vista applies them again after every reload and when a monitor connects.
@@ -126,6 +177,7 @@ omarchy plugin remove chyld.vista
 That removes the plugin and its bar entry, including every Vista setting and
 pin in `~/.config/omarchy/shell.json`. Then:
 
+- Bring back Omarchy's workspaces widget where it was: `omarchy plugin enable omarchy.workspaces --after omarchy.menu`.
 - Delete the Vista lines you pasted into `~/.config/hypr/bindings.lua`, which brings back Omarchy's defaults for `SUPER + TAB` and `SUPER + SHIFT + TAB`.
 - Pins that were active stay in effect until Hyprland's config next reloads (`hyprctl reload`, or saving any Hyprland config file) or you log out. Nothing else remains.
 
@@ -138,19 +190,23 @@ pin in `~/.config/omarchy/shell.json`. Then:
 | `WorkspacePreview.qml` | One workspace drawn to scale with live window captures |
 | `SuperWatch.qml` | Asks Hyprland whether Super is still held |
 | `PinManager.qml` | Monitor pins as runtime Hyprland workspace rules |
-| `AppIcons.qml` | App icons per workspace, bounded cache |
+| `WorkspaceStrip.qml` | The bar's workspace strip: pills, app icons, clicks, scrolling and the gear |
+| `Strip.js` | The workspace list the bar and the switcher share, and the strip's logic |
+| `AppIcons.qml` | App icons per workspace and per window, bounded cache |
 | `BindCheck.qml` | Notifies when the `SUPER + TAB` bindings are missing or overridden |
 | `Hypr.js` | Every `hyprctl` command Vista runs |
 | `Omarchy.js` | Every Omarchy command Vista runs: the keybindings notification |
 | `Safe.js` | Validation for every value that isn't a literal in the code |
-| `Settings.qml`, `Logo.qml` | The bar icon and its settings popup |
+| `Settings.qml`, `Logo.qml` | The bar entry (the workspace strip) and its settings popup |
 
 Run the tests with `node --test tests/`.
 
-Saving a file here reloads the bar icon and settings popup, but not the
-switcher service: the manifest sets `keepLoaded`, and the shell keeps such
-services running across plugin reloads. After changing `Service.qml` or
-anything it loads, run `omarchy restart shell`.
+Saving a file here asks the shell to reload the bar strip and settings popup,
+but not the switcher service: the manifest sets `keepLoaded`, and the shell
+keeps such services running across plugin reloads. After changing
+`Service.qml` or anything it loads, or when a saved change doesn't show up in
+the bar (the shell can keep a component that is still in use), run
+`omarchy restart shell`.
 
 ## License
 

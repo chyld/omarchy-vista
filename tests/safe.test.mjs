@@ -95,6 +95,47 @@ test("hyprctl commands are argv arrays with validated, quoted values", () => {
   assert.equal(Hypr.moveWorkspace("2", 'x", monitor = "y'), null)
 })
 
+test("windowAddress accepts 1..16 hex digits, with or without 0x, normalised", () => {
+  assert.equal(Safe.windowAddress("556e062addd0"), "0x556e062addd0")
+  assert.equal(Safe.windowAddress("0x556E062ADDD0"), "0x556e062addd0")
+  assert.equal(Safe.windowAddress("0X1a"), "0x1a")
+  assert.equal(Safe.windowAddress("000a"), "0xa")
+  assert.equal(Safe.windowAddress("0"), "0x0")
+  assert.equal(Safe.windowAddress("f".repeat(16)), "0x" + "f".repeat(16))
+  for (const bad of ["", "0x", "address:0x1", "0x0x1", "f".repeat(17), "0xg1", " 0x1", "0x1 ", "0x1\n",
+                     '0x1"', "0x1'", "-1", 0x1234, 12, null, undefined, { toString: () => "0x1" }])
+    assert.equal(Safe.windowAddress(bad), "", JSON.stringify(bad))
+})
+
+test("outputName accepts connector names only", () => {
+  assert.equal(Safe.outputName("HDMI-A-1"), "HDMI-A-1")
+  assert.equal(Safe.outputName("eDP-1"), "eDP-1")
+  for (const bad of ["", "desc:Panel", "HDMI A 1", 'a"b', "a\\b", "x".repeat(65), 1, null, { toString: () => "eDP-1" }])
+    assert.equal(Safe.outputName(bad), "", JSON.stringify(bad))
+})
+
+test("strip commands focus a window, a monitor, or a new workspace on a monitor", () => {
+  assert.deepEqual(Array.from(Hypr.focusWindow("556e062addd0")),
+    ["/usr/bin/hyprctl", "dispatch", 'hl.dsp.focus({ window = "address:0x556e062addd0" })'])
+  assert.deepEqual(Array.from(Hypr.focusMonitor("HDMI-A-1")),
+    ["/usr/bin/hyprctl", "dispatch", 'hl.dsp.focus({ monitor = "HDMI-A-1" })'])
+  assert.deepEqual(Array.from(Hypr.focusWorkspaceOn(4, "eDP-1")),
+    ["/usr/bin/hyprctl", "eval",
+     'hl.dispatch(hl.dsp.focus({ monitor = "eDP-1" }))\nhl.dispatch(hl.dsp.focus({ workspace = "4" }))'])
+  assert.equal(Hypr.focusWindow('0x1" }) os.execute("x") --'), null)
+  assert.equal(Hypr.focusWindow("address:0x1"), null)
+  assert.equal(Hypr.focusMonitor('eDP-1" })'), null)
+  assert.equal(Hypr.focusMonitor("desc:Panel"), null)
+  assert.equal(Hypr.focusWorkspaceOn(0, "eDP-1"), null)
+  assert.equal(Hypr.focusWorkspaceOn(4, "bad name"), null)
+})
+
+test("a markup-shaped window title is plain text in the strip's tooltip", () => {
+  const tip = Safe.plain('<img src="https://example.invalid/t">‮evil&amp;', 64)
+  assert.ok(!/[<>&‪-‮⁦-⁩]/.test(tip), tip)
+  assert.ok(tip.length <= 64)
+})
+
 test("workspaceRules builds one eval and skips invalid pins", () => {
   const argv = Array.from(Hypr.workspaceRules({ "1": "eDP-1", "2": 'bad"', "x": "eDP-1" }))
   assert.deepEqual(argv, ["/usr/bin/hyprctl", "eval", 'hl.workspace_rule({ workspace = "1", monitor = "eDP-1" })'])

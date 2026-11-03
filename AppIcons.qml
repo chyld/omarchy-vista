@@ -45,6 +45,13 @@ Item {
     return toplevel.wayland && toplevel.wayland.appId ? Safe.appClass(toplevel.wayland.appId) : ""
   }
 
+  // One window's icon. A window without a usable class gets the generic
+  // application icon, so it still shows and can be clicked.
+  function windowIcon(toplevel) {
+    var cls = toplevel ? appClass(toplevel) : ""
+    return cls ? iconFor(cls) : Quickshell.iconPath("application-x-executable", true)
+  }
+
   function iconFor(cls) {
     if (cache.map[cls] !== undefined) return cache.map[cls]
     if (cache.size >= 200) { cache.map = Object.create(null); cache.size = 0 }

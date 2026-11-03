@@ -28,6 +28,20 @@ function monitorKey(value) {
   return /^[A-Za-z0-9._-]{1,64}$/.test(value) ? value : ""
 }
 
+// A monitor's output (connector) name such as "HDMI-A-1", or "".
+function outputName(value) {
+  return typeof value === "string" && /^[A-Za-z0-9._-]{1,64}$/.test(value) ? value : ""
+}
+
+// A Hyprland window address as "0x<lowercase hex>", or "". Quickshell reports
+// it as bare hex, hyprctl with a 0x prefix; both are accepted. Only a string of
+// 1..16 hex digits passes, so nothing else can reach a Lua string.
+function windowAddress(value) {
+  if (typeof value !== "string") return ""
+  var m = /^(?:0[xX])?([0-9A-Fa-f]{1,16})$/.exec(value)
+  return m ? "0x" + m[1].toLowerCase().replace(/^0+(?=.)/, "") : ""
+}
+
 // The pins setting reduced to valid entries: workspace id -> monitor key.
 // Null-prototype map, so keys like "__proto__" are just keys.
 function pins(value) {

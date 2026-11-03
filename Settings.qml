@@ -6,15 +6,19 @@ import "Defaults.js" as Defaults
 import "Safe.js" as Safe
 import "Hypr.js" as Hypr
 
-// Bar icon for Vista. Clicking it opens the settings popup. Changes show at
-// once, are handed straight to the switcher service (pushToService), and are
-// saved on this widget's entry in shell.json through the host.
+// Vista's bar entry: the workspace strip (WorkspaceStrip.qml), whose gear
+// opens the settings popup. Changes show at once, are handed straight to the
+// switcher service (pushToService), and are saved on this widget's entry in
+// shell.json through the host.
 Panel {
   id: root
   moduleName: "chyld.vista"
 
-  implicitWidth: button.implicitWidth
-  implicitHeight: button.implicitHeight
+  implicitWidth: strip.implicitWidth
+  implicitHeight: strip.implicitHeight
+
+  // The bar's open-panel mark sits under the gear, not the middle of the strip.
+  readonly property Item openPanelIndicatorItem: strip.gear
 
   function value(key) {
     return root.setting(key, Defaults.values[key])
@@ -95,16 +99,15 @@ Panel {
     saveTimer.restart()
   }
 
-  BarIconButton {
-    id: button
+  WorkspaceStrip {
+    id: strip
     anchors.fill: parent
     bar: root.bar
-    // Custom vector mark (Logo.qml).
-    iconComponent: Component {
-      Logo { color: button.foreground }
-    }
-    tooltipText: root.opened ? "" : "Vista settings"
-    onPressed: function(b) { root.toggle() }
+    foreground: root.barForeground
+    workspaceCount: root.workspaceCount
+    showIcons: root.value("showIcons") === true
+    settingsOpen: root.opened
+    onSettingsRequested: root.toggle()
   }
 
   // ------------------------------------------------------------ popup parts
@@ -194,7 +197,7 @@ Panel {
 
   KeyboardPanel {
     id: panel
-    anchorItem: button
+    anchorItem: strip.gear
     owner: root
     bar: root.bar
     open: root.opened
@@ -435,7 +438,7 @@ Panel {
 
           Repeater {
             model: [
-              { key: "showIcons", label: "App icons", hint: "The apps on each workspace" },
+              { key: "showIcons", label: "App icons", hint: "In the bar and the switcher" },
               { key: "showWallpaper", label: "Wallpaper", hint: "Behind every preview" },
               { key: "animations", label: "Animations", hint: "Fades and the sliding bar" }
             ]

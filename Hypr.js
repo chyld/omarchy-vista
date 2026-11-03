@@ -13,6 +13,29 @@ function focusWorkspace(id) {
   return ws ? [HYPRCTL, "dispatch", "hl.dsp.focus({ workspace = " + Safe.luaQuote(ws) + " })"] : null
 }
 
+// Focus one window, which also switches to its workspace and monitor.
+function focusWindow(address) {
+  var a = Safe.windowAddress(address)
+  return a ? [HYPRCTL, "dispatch", "hl.dsp.focus({ window = " + Safe.luaQuote("address:" + a) + " })"] : null
+}
+
+// Focus a monitor by its output name.
+function focusMonitor(name) {
+  var mon = Safe.outputName(name)
+  return mon ? [HYPRCTL, "dispatch", "hl.dsp.focus({ monitor = " + Safe.luaQuote(mon) + " })"] : null
+}
+
+// Focus a monitor, then a workspace, in one eval: a workspace that does not
+// exist yet is created on that monitor rather than on the focused one.
+function focusWorkspaceOn(id, name) {
+  var ws = Safe.workspaceId(id)
+  var mon = Safe.outputName(name)
+  return ws && mon
+    ? [HYPRCTL, "eval", "hl.dispatch(hl.dsp.focus({ monitor = " + Safe.luaQuote(mon) + " }))\n"
+                      + "hl.dispatch(hl.dsp.focus({ workspace = " + Safe.luaQuote(ws) + " }))"]
+    : null
+}
+
 function moveWorkspace(id, monitor) {
   var ws = Safe.workspaceId(id)
   var mon = Safe.monitorKey(monitor)

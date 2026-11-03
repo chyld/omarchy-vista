@@ -5,7 +5,7 @@
   "version": "0.2.1",
   "author": "Chyld Medford",
   "license": "MIT",
-  "description": "See every workspace before you jump to it. Hold Super, tap Tab: a big live preview, app icons and a filmstrip of all your workspaces. Release to switch. Plus one-click monitor pins.",
+  "description": "See every workspace before you jump to it. Hold Super, tap Tab: a big live preview, app icons and a filmstrip of all your workspaces. Release to switch. In the bar, a workspace strip with the app icons on each workspace, plus one-click monitor pins.",
   "homepage": "https://github.com/chyld/omarchy-vista",
   "kinds": [
     "service",
@@ -18,9 +18,9 @@
   },
   "barWidget": {
     "displayName": "Vista",
-    "description": "Settings for Vista, the workspace switcher",
+    "description": "Workspace strip with app icons, and settings for Vista, the workspace switcher",
     "category": "Compositor",
     "allowMultiple": false,
-    "defaultSection": "right"
+    "defaultSection": "left"
   }
 }
