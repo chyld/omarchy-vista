@@ -17,8 +17,9 @@ import "Strip.js" as Strip
 // Input goes through the bar's own contract: its MouseArea covers every
 // widget and hands left clicks only to registered click targets (each pill,
 // and the gear, which registers itself as a WidgetButton), and its tooltips
-// show only for items reporting tooltipHovered (each icon). Nothing here but
-// the gear is a MouseArea, so the wheel reaches the WheelHandler.
+// show only for items reporting tooltipHovered (each icon). The only other
+// MouseAreas are the gear's and a button-less one beneath the pills that
+// catches the wheel.
 //
 // The Repeaters' models (ids, and each pill's windows) are only replaced when
 // their contents change: a new array would make a Repeater destroy and
@@ -176,9 +177,14 @@ Item {
     if (strip.bar) strip.bar.hideTooltip(target)
   }
 
-  WheelHandler {
-    target: null
-    onWheel: function(event) { strip.scroll(event.angleDelta.y || event.angleDelta.x) }
+  // Takes no buttons, so clicks still reach the bar's own MouseArea; it only
+  // catches the wheel, on either axis and from a mouse or a touchpad (a
+  // WheelHandler defaults to vertical mouse wheels only). Declared before the
+  // pills, so it sits beneath them; they have no MouseAreas to stop it.
+  MouseArea {
+    anchors.fill: parent
+    acceptedButtons: Qt.NoButton
+    onWheel: function(wheel) { strip.scroll(wheel.angleDelta.y || wheel.angleDelta.x) }
   }
 
   // ------------------------------------------------------------ refresh
