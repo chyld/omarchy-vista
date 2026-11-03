@@ -48,20 +48,27 @@ omarchy plugin add https://github.com/chyld/omarchy-vista --enable
 ```
 
 Vista needs two keybindings, which you add yourself. Paste these lines into
-`~/.config/hypr/bindings.lua`, below anything else that binds `SUPER + TAB`
-(the same lines are in [`bindings.lua`](bindings.lua)):
+`~/.config/hypr/bindings.lua` (the same lines are in
+[`bindings.lua`](bindings.lua)):
 
 ```lua
-hl.unbind("SUPER + TAB")
-hl.unbind("SUPER + SHIFT + TAB")
-o.bind("SUPER + TAB", "Vista: next workspace", hl.dsp.global("chyld-vista:next"), { repeating = true })
-o.bind("SUPER + SHIFT + TAB", "Vista: previous workspace", hl.dsp.global("chyld-vista:prev"), { repeating = true })
+local function vista_bind()
+  hl.unbind("SUPER + TAB")
+  hl.unbind("SUPER + SHIFT + TAB")
+  o.bind("SUPER + TAB", "Vista: next workspace", hl.dsp.global("chyld-vista:next"), { repeating = true })
+  o.bind("SUPER + SHIFT + TAB", "Vista: previous workspace", hl.dsp.global("chyld-vista:prev"), { repeating = true })
+end
+vista_bind()
+hl.on("config.reloaded", vista_bind)
 hl.layer_rule({ match = { namespace = "chyld-vista" }, no_anim = true })
 ```
 
 They replace Omarchy's default `SUPER + TAB` (next workspace) and
 `SUPER + SHIFT + TAB` (previous workspace). Hyprland picks them up when you
-save the file. Vista never edits your Hyprland files. If the bindings are
+save the file. They are applied again once Hyprland has read its whole
+config, so they also win over files loaded after `bindings.lua` that bind
+the same keys, such as the `hyprmoncfg-monitors.lua` that
+[hyprmoncfg](https://github.com/crmne/hyprmoncfg) generates and loads last. Vista never edits your Hyprland files. If the bindings are
 missing, or another binding still uses `SUPER + TAB`, Vista tells you with a
 desktop notification.
 
