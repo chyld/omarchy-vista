@@ -53,8 +53,8 @@ omarchy plugin disable omarchy.workspaces
 ```
 
 When `plugin add` asks for a bar section, keep `left`, which it preselects: Vista's workspace strip
-lands right after Omarchy's workspaces widget, which the second line then
-takes off the bar, so the strip sits where it was.
+lands right after Omarchy's workspaces widget, and when the second line
+takes that widget off the bar, the strip moves into its place.
 
 **Upgrading from Vista 0.2,** whose bar entry was a single icon, usually on the
 right: move it next to Omarchy's workspaces widget first, while that widget is

@@ -109,6 +109,8 @@ test("windowAddress accepts 1..16 hex digits, with or without 0x, normalised", (
   assert.equal(Safe.windowAddress("000a"), "0xa")
   assert.equal(Safe.windowAddress("0"), "0x0")
   assert.equal(Safe.windowAddress("f".repeat(16)), "0x" + "f".repeat(16))
+  assert.equal(Safe.windowAddress("0x" + "A".repeat(16)), "0x" + "a".repeat(16))
+  assert.equal(Safe.windowAddress("0x" + "a".repeat(17)), "")
   for (const bad of ["", "0x", "address:0x1", "0x0x1", "f".repeat(17), "0xg1", " 0x1", "0x1 ", "0x1\n",
                      '0x1"', "0x1'", "-1", 0x1234, 12, null, undefined, { toString: () => "0x1" }])
     assert.equal(Safe.windowAddress(bad), "", JSON.stringify(bad))
