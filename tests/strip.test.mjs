@@ -59,6 +59,8 @@ test("scrollIds: keeps this monitor's and not-yet-existing workspaces", () => {
   assert.deepEqual(plain(Strip.scrollIds([1, 2, 3, 4, 5], owners, "HDMI-A-1")), [2, 3, 4, 5])
   assert.deepEqual(plain(Strip.scrollIds(null, owners, "eDP-1")), [])
   assert.deepEqual(plain(Strip.scrollIds([1, 2], null, "eDP-1")), [1, 2])
+  // A workspace that exists without a monitor ("") is still somewhere to go.
+  assert.deepEqual(plain(Strip.scrollIds([1, 2], { 1: "", 2: "HDMI-A-1" }, "eDP-1")), [1])
   // Inherited keys are not owners.
   assert.deepEqual(plain(Strip.scrollIds([1], Object.create({ 1: "HDMI-A-1" }), "eDP-1")), [1])
 })

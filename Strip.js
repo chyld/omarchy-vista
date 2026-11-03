@@ -43,16 +43,18 @@ function workspaceIds(count, rawIds) {
   return ids
 }
 
-// The ids scrolling may land on from a bar: those living on that bar's monitor
-// and those that do not exist yet (they are created there). `owners` maps an
-// existing workspace id to the output name of its monitor.
+// The ids scrolling may land on from a bar: those living on that bar's monitor,
+// those that do not exist yet (they are created there), and those that exist
+// on no monitor. `owners` maps an existing workspace id to the output name of
+// its monitor ("" for none). Only a workspace on another monitor is skipped.
 function scrollIds(ids, owners, monitorName) {
   var out = []
   if (!Array.isArray(ids)) return out
   var map = owners && typeof owners === "object" ? owners : {}
   for (var i = 0; i < ids.length; i++) {
     var key = String(ids[i])
-    if (!Object.prototype.hasOwnProperty.call(map, key) || map[key] === monitorName) out.push(ids[i])
+    var owner = Object.prototype.hasOwnProperty.call(map, key) ? map[key] : ""
+    if (!owner || owner === monitorName) out.push(ids[i])
   }
   return out
 }
