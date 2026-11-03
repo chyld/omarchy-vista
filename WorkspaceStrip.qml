@@ -207,6 +207,8 @@ Item {
         readonly property var toplevelList: pill.workspace ? pill.workspace.toplevels.values : []
         readonly property bool occupied: pill.toplevelList.length > 0
         readonly property var windows: { strip.revision; return Strip.windowsFor(pill.toplevelList, strip.showIcons ? strip.maxIcons : 0) }
+        // With app icons off a pill is just its number: no "+N" either.
+        readonly property int overflow: strip.showIcons ? pill.windows.hidden : 0
         readonly property string key: String(pill.workspaceId)
         readonly property string shownOn: strip.shown[pill.key] || ""
         readonly property bool shownHere: strip.monitor !== null && pill.shownOn !== "" && pill.shownOn === String(strip.monitor.name)
@@ -259,7 +261,7 @@ Item {
         Grid {
           id: content
           anchors.centerIn: parent
-          columns: strip.vertical ? 1 : 1 + pill.windows.shown.length + (pill.windows.hidden > 0 ? 1 : 0)
+          columns: strip.vertical ? 1 : 1 + pill.windows.shown.length + (pill.overflow > 0 ? 1 : 0)
           spacing: Style.space(6)
           horizontalItemAlignment: Grid.AlignHCenter
           verticalItemAlignment: Grid.AlignVCenter
@@ -289,7 +291,13 @@ Item {
               width: strip.iconSize
               height: strip.iconSize
 
-              onTipTextChanged: if (iconHover.hovered) strip.showTip(icon, icon.tipText)
+              // A title that changes while hovered updates the tooltip, and
+              // one that becomes empty hides it.
+              onTipTextChanged: {
+                if (!iconHover.hovered) return
+                if (icon.tipText) strip.showTip(icon, icon.tipText)
+                else strip.hideTip(icon)
+              }
 
               Rectangle {
                 anchors.centerIn: parent
@@ -330,9 +338,9 @@ Item {
           }
 
           Text {
-            visible: pill.windows.hidden > 0
+            visible: pill.overflow > 0
             textFormat: Text.PlainText
-            text: "+" + pill.windows.hidden
+            text: "+" + pill.overflow
             color: Util.alpha(strip.foreground, 0.7)
             font.family: strip.bar && strip.bar.fontFamily ? strip.bar.fontFamily : Style.font.family
             font.pixelSize: Style.font.caption

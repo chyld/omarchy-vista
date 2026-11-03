@@ -138,7 +138,7 @@ scrolling or floating) and changes it when clicked. Vista's strip doesn't;
 
 Click the gear at the end of Vista's workspace strip. Changes apply immediately.
 
-- **Workspaces**: always show 1 to N (3, 5, 8 or 10); any other workspace that exists is added in numeric order, up to 20 in all. The bar and the switcher show the same list.
+- **Workspaces**: always show 1 to N (3, 5, 8 or 10); any other workspace that exists is added in numeric order. Past 20 in all, the empty always-shown ones are left out; a workspace that exists always shows. The bar and the switcher show the same list.
 - **Preview** and **Thumbnails**: small, medium or large.
 - **Pin to monitor**: click a workspace on a monitor's row to pin it there, and click it again to unpin it.
 - **App icons** (in the bar and the switcher), **Wallpaper**, **Animations**: on or off.

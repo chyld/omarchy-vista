@@ -40,7 +40,17 @@ test("workspaceIds: count is clamped and the list capped", () => {
   assert.deepEqual(plain(Strip.workspaceIds(0, [])), [1])
   assert.deepEqual(plain(Strip.workspaceIds("x", [])), [1])
   assert.deepEqual(plain(Strip.workspaceIds(999, [])), range(1, Strip.MAX_PILLS))
-  assert.deepEqual(plain(Strip.workspaceIds(5, range(30, 50))), [1, 2, 3, 4, 5, ...range(30, 44)])
+  // Existing workspaces take the room first; the always-shown ones fill the rest.
+  assert.deepEqual(plain(Strip.workspaceIds(10, range(30, 45))), [1, 2, 3, 4, 30, ...range(31, 45)].sort((a, b) => a - b))
+  assert.deepEqual(plain(Strip.workspaceIds(5, [3, 40])), [1, 2, 3, 4, 5, 40])
+})
+
+test("workspaceIds: an existing workspace is never capped away", () => {
+  // Workspaces 1..21 all exist: 21 (say, the one a monitor shows) stays.
+  assert.deepEqual(plain(Strip.workspaceIds(5, range(1, 21))), range(1, 21))
+  assert.deepEqual(plain(Strip.workspaceIds(50, [...range(1, 20), 50])), [...range(1, 20), 50])
+  // Every existing one stays even past the cap, so the switcher can reach it.
+  assert.equal(Strip.workspaceIds(3, range(1, 50)).length, 50)
 })
 
 test("scrollIds: keeps this monitor's and not-yet-existing workspaces", () => {

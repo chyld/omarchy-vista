@@ -12,28 +12,35 @@ var MAX_WALK = 64
 
 function numeric(a, b) { return a - b }
 
-// Always 1..count, plus every other valid workspace id in rawIds, ascending,
-// without duplicates, at most MAX_PILLS. Only numbers and strings count as
-// ids, so an array like [3] is not read as "3".
+// Every valid workspace id in rawIds (the ones that exist), plus 1..count,
+// ascending, without duplicates. Only numbers and strings count as ids, so an
+// array like [3] is not read as "3". Past MAX_PILLS, the always-shown ids
+// that don't exist are dropped from the top; an existing workspace (and so
+// any workspace a monitor shows) is never dropped.
 function workspaceIds(count, rawIds) {
   var n = Math.floor(Number(count))
   if (!isFinite(n) || n < 1) n = 1
   if (n > Safe.MAX_WORKSPACE) n = Safe.MAX_WORKSPACE
-  var seen = Object.create(null)
+  var existing = Object.create(null)
   var ids = []
-  for (var i = 1; i <= n; i++) { seen[i] = true; ids.push(i) }
   if (Array.isArray(rawIds)) {
     for (var j = 0; j < rawIds.length && j < 500; j++) {
       var raw = rawIds[j]
       if (typeof raw !== "number" && typeof raw !== "string") continue
       var id = Safe.workspaceId(raw)
-      if (!id || seen[id]) continue
-      seen[id] = true
+      if (!id || existing[id]) continue
+      existing[id] = true
       ids.push(Number(id))
     }
   }
+  var room = Math.max(0, MAX_PILLS - ids.length)
+  for (var i = 1; i <= n && room > 0; i++) {
+    if (existing[i]) continue
+    ids.push(i)
+    room--
+  }
   ids.sort(numeric)
-  return ids.slice(0, MAX_PILLS)
+  return ids
 }
 
 // The ids scrolling may land on from a bar: those living on that bar's monitor
