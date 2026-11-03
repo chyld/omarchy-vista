@@ -149,3 +149,20 @@ test("fitIcons: without a budget or counts it keeps the cap", () => {
   assert.equal(Strip.fitIcons(["x", -3, NaN], 5, sizes, 30), 5)
   assert.equal(Strip.fitIcons([9], "x", sizes, 100), 0)
 })
+
+test("sameList compares ids in order, numbers and strings alike", () => {
+  assert.equal(Strip.sameList([1, 2, 5], [1, 2, 5]), true)
+  assert.equal(Strip.sameList([1, 2, 5], ["1", "2", "5"]), true)
+  assert.equal(Strip.sameList([1, 2, 5], [1, 5, 2]), false)
+  assert.equal(Strip.sameList([1, 2], [1, 2, 3]), false)
+  assert.equal(Strip.sameList(null, []), false)
+})
+
+test("windowsKey changes only when the shown windows or the hidden count do", () => {
+  const a = Strip.windowsFor([win("b"), win("a")], 5)
+  const b = Strip.windowsFor([win("a"), win("b")], 5)
+  assert.equal(Strip.windowsKey(a), Strip.windowsKey(b))
+  assert.notEqual(Strip.windowsKey(a), Strip.windowsKey(Strip.windowsFor([win("a")], 5)))
+  assert.notEqual(Strip.windowsKey(Strip.windowsFor([win("a"), win("b")], 1)), Strip.windowsKey(Strip.windowsFor([win("a")], 1)))
+  assert.equal(Strip.windowsKey(null), "")
+})

@@ -68,19 +68,26 @@ function luaQuote(s) {
   return "\"" + String(s).replace(/\\/g, "\\\\").replace(/"/g, "\\\"") + "\""
 }
 
+// Cuts s to at most max UTF-16 units without splitting a surrogate pair.
+function cut(s, max) {
+  if (s.length <= max) return s
+  var out = s.slice(0, max)
+  var last = out.charCodeAt(out.length - 1)
+  return last >= 0xd800 && last <= 0xdbff ? out.slice(0, -1) : out
+}
+
 // Text for host components the plugin cannot pin to PlainText (tooltips):
 // no markup characters, no control or bidi characters, capped.
 function plain(value, max) {
   var s = String(value === undefined || value === null ? "" : value)
   s = s.replace(CONTROL, "").replace(/[<>&]/g, "")
-  var cap = max || 64
-  return s.length > cap ? s.slice(0, cap) : s
+  return cut(s, max || 64)
 }
 
 // A window title for a PlainText label: controls removed, capped.
 function title(value) {
   var s = String(value === undefined || value === null ? "" : value).replace(CONTROL, "")
-  return s.length > MAX_TITLE ? s.slice(0, MAX_TITLE) : s
+  return cut(s, MAX_TITLE)
 }
 
 // A window class usable as an icon-theme or desktop-entry name, or "".

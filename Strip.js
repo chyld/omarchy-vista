@@ -112,6 +112,23 @@ function fitIcons(counts, maxIcons, sizes, budget) {
   return 0
 }
 
+// Whether two id lists hold the same ids in the same order. The strip only
+// replaces its Repeater model when they don't.
+function sameList(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false
+  for (var i = 0; i < a.length; i++) if (Number(a[i]) !== Number(b[i])) return false
+  return true
+}
+
+// A key for a windowsFor() result: the same windows, in the same order, with
+// the same hidden count give the same key.
+function windowsKey(w) {
+  if (!w || !Array.isArray(w.shown)) return ""
+  var parts = []
+  for (var i = 0; i < w.shown.length; i++) parts.push(w.shown[i] ? String(w.shown[i].address) : "")
+  return parts.join(",") + "|" + (Number(w.hidden) || 0)
+}
+
 // A pill's look, in precedence order: "here" (shown on this bar's monitor),
 // "elsewhere" (shown on another monitor), "occupied", "empty".
 function pillState(shownHere, shownElsewhere, occupied) {

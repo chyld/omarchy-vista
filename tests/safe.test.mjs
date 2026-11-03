@@ -69,6 +69,13 @@ test("plain strips markup, controls and bidi, and caps length", () => {
   assert.equal(Safe.plain(null), "")
 })
 
+test("plain and title never cut a surrogate pair in half", () => {
+  const s = "ab\u{1F600}cd"   // a, b, then a two-unit emoji
+  assert.equal(Safe.plain(s, 3), "ab")
+  assert.equal(Safe.plain(s, 4), "ab\u{1F600}")
+  assert.equal(Safe.title("x".repeat(255) + "\u{1F600}").length, 255)
+})
+
 test("plain and title strip separators, BOM and bidi marks", () => {
   const s = "a\u2028b\u2029c\ufeffd\u061ce\u202ef"
   assert.equal(Safe.plain(s), "abcdef")

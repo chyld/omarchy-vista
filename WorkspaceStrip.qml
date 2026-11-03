@@ -15,9 +15,14 @@ import "Strip.js" as Strip
 // same list the Super+Tab switcher shows (Strip.workspaceIds).
 //
 // Input goes through the bar's own contract: its MouseArea covers every
-// widget and hands left clicks only to registered click targets (each pill),
-// and its tooltips show only for items reporting tooltipHovered (each icon).
-// Nothing here is a MouseArea, so the wheel reaches the WheelHandler.
+// widget and hands left clicks only to registered click targets (each pill,
+// and the gear, which registers itself as a WidgetButton), and its tooltips
+// show only for items reporting tooltipHovered (each icon). Nothing here but
+// the gear is a MouseArea, so the wheel reaches the WheelHandler.
+//
+// The Repeaters' models (ids, and each pill's windows) are only replaced when
+// their contents change: a new array would make a Repeater destroy and
+// recreate every pill and icon, dropping hover and tooltips.
 Item {
   id: strip
 
@@ -45,6 +50,9 @@ Item {
   // The monitor this bar is on. With a screen Hyprland does not know, there is
   // none: no "this monitor" highlight, and scrolling does nothing.
   readonly property var monitor: {
+    // monitorFor() notifies nothing; reading the list re-resolves on hotplug.
+    Hyprland.monitors.values
+    Hyprland.focusedMonitor
     var window = strip.QsWindow.window
     var screen = window ? window.screen : null
     if (screen) return Hyprland.monitorFor(screen) || null
@@ -55,13 +63,15 @@ Item {
   // when Hyprland's model is refreshed, which nothing else would notify.
   property int revision: 0
 
-  readonly property var ids: {
+  readonly property var freshIds: {
     strip.revision
     var values = Hyprland.workspaces.values
     var raw = []
     for (var i = 0; i < values.length && i < 200; i++) raw.push(values[i].id)
     return Strip.workspaceIds(strip.workspaceCount, raw)
   }
+  property var ids: []
+  onFreshIdsChanged: if (!Strip.sameList(strip.ids, strip.freshIds)) strip.ids = strip.freshIds
 
   // Existing workspace id -> its monitor's output name.
   readonly property var owners: {
@@ -183,19 +193,22 @@ Item {
     destroyworkspacev2: true, focusedmon: true, monitoraddedv2: true, monitorremovedv2: true, configreloaded: true
   })
   readonly property var windowEvents: ({
-    openwindow: true, closewindow: true, movewindow: true, movewindowv2: true, windowtitlev2: true
+    openwindow: true, closewindow: true, movewindow: true, movewindowv2: true
   })
 
+  // Timers throttle rather than debounce (start only when idle), so a burst of
+  // events can't hold a refresh off indefinitely. Title changes need neither:
+  // toplevel.title notifies by itself.
   Connections {
     target: Hyprland
     function onRawEvent(event) {
       var name = event ? String(event.name) : ""
       if (strip.workspaceEvents[name] === true) {
         if (strip.asks) { Hyprland.refreshMonitors(); Hyprland.refreshWorkspaces() }
-        revisionTimer.restart()
+        if (!revisionTimer.running) revisionTimer.start()
       } else if (strip.windowEvents[name] === true) {
-        if (strip.asks) toplevelTimer.restart()
-        revisionTimer.restart()
+        if (strip.asks && !toplevelTimer.running) toplevelTimer.start()
+        if (!revisionTimer.running) revisionTimer.start()
       }
     }
   }
@@ -213,6 +226,7 @@ Item {
   }
 
   Component.onCompleted: {
+    strip.ids = strip.freshIds
     if (strip.asks) { Hyprland.refreshMonitors(); Hyprland.refreshWorkspaces(); Hyprland.refreshToplevels() }
     revisionTimer.restart()
   }
@@ -237,7 +251,9 @@ Item {
         readonly property var workspace: { strip.revision; return strip.workspaceById(pill.workspaceId) }
         readonly property var toplevelList: pill.workspace ? pill.workspace.toplevels.values : []
         readonly property bool occupied: pill.toplevelList.length > 0
-        readonly property var windows: { strip.revision; return Strip.windowsFor(pill.toplevelList, strip.showIcons ? strip.maxIcons : 0) }
+        readonly property var freshWindows: { strip.revision; return Strip.windowsFor(pill.toplevelList, strip.showIcons ? strip.maxIcons : 0) }
+        property var windows: ({ shown: [], hidden: 0 })
+        onFreshWindowsChanged: if (Strip.windowsKey(pill.windows) !== Strip.windowsKey(pill.freshWindows)) pill.windows = pill.freshWindows
         // With app icons off a pill is just its number: no "+N" either.
         readonly property int overflow: strip.showIcons ? pill.windows.hidden : 0
         readonly property string key: String(pill.workspaceId)
@@ -271,7 +287,10 @@ Item {
           target: strip
           function onBarChanged() { pill.syncRegistration() }
         }
-        Component.onCompleted: pill.syncRegistration()
+        Component.onCompleted: {
+          pill.windows = pill.freshWindows
+          pill.syncRegistration()
+        }
         Component.onDestruction: if (pill.registeredBar) pill.registeredBar.unregisterClickTarget(pill)
 
         width: strip.vertical ? strip.thickness : content.width + Style.space(16)
@@ -330,10 +349,11 @@ Item {
                 else strip.hideTip(icon)
               }
 
+              // Stays inside the pill however tight the bar is.
               Rectangle {
                 anchors.centerIn: parent
-                width: parent.width + Style.space(6)
-                height: parent.height + Style.space(6)
+                width: Math.min(parent.width + Style.space(6), strip.thickness - 2)
+                height: width
                 radius: Math.min(Math.max(Style.cornerRadius / 2, Style.space(3)), height / 2)
                 color: icon.focusedWindow ? Util.alpha(strip.foreground, 0.16) : "transparent"
               }
