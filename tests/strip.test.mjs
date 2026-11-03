@@ -166,3 +166,18 @@ test("windowsKey changes only when the shown windows or the hidden count do", ()
   assert.notEqual(Strip.windowsKey(Strip.windowsFor([win("a"), win("b")], 1)), Strip.windowsKey(Strip.windowsFor([win("a")], 1)))
   assert.equal(Strip.windowsKey(null), "")
 })
+
+test("pillAction: what a click from a bar does", () => {
+  // Already shown on this bar's monitor: only focus the monitor, if needed.
+  assert.equal(Strip.pillAction(3, { activeId: 3, focused: true }, true), "none")
+  assert.equal(Strip.pillAction(3, { activeId: 3, focused: false }, true), "focusMonitor")
+  assert.equal(Strip.pillAction("3", { activeId: 3, focused: false }, true), "focusMonitor")
+  // Exists elsewhere (shown or not): show it where it lives.
+  assert.equal(Strip.pillAction(5, { activeId: 3, focused: false }, true), "focusWorkspace")
+  // Doesn't exist: create it on this bar's monitor.
+  assert.equal(Strip.pillAction(4, { activeId: 3, focused: false }, false), "focusWorkspaceOn")
+  assert.equal(Strip.pillAction(4, { activeId: 3, focused: true }, false), "focusWorkspaceOn")
+  // No monitor known: plain focus.
+  assert.equal(Strip.pillAction(4, null, false), "focusWorkspace")
+  assert.equal(Strip.pillAction(4, null, true), "focusWorkspace")
+})

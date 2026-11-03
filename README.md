@@ -111,7 +111,7 @@ Requirements: Omarchy 4 (omarchy-shell) with the Hyprland Lua config.
 | Click the gear | open Vista's settings |
 
 Each pill is one workspace: its number, then an icon for each window on it
-(up to five, then `+N`; fewer when the strip would run too long for the screen). The workspace a monitor shows is outlined in your
+(up to five, three on a vertical bar, then `+N`; fewer when the strip would run too long for the screen). The workspace a monitor shows is outlined in your
 theme's accent on that monitor's bar, and faintly on the others; the focused
 window's icon is highlighted.
 

@@ -147,12 +147,11 @@ Item {
   // follows, as with the switcher); a new one is created on this monitor.
   function activate(id) {
     var m = strip.monitor
-    if (m && m.activeWorkspace && m.activeWorkspace.id === id) {
-      if (!m.focused) strip.run(Hypr.focusMonitor(String(m.name)))
-      return
-    }
-    if (strip.workspaceById(id) || !m) strip.run(Hypr.focusWorkspace(id))
-    else strip.run(Hypr.focusWorkspaceOn(id, String(m.name)))
+    var action = Strip.pillAction(id, m ? { activeId: m.activeWorkspace ? m.activeWorkspace.id : -1, focused: m.focused === true } : null,
+                                  strip.workspaceById(id) !== null)
+    if (action === "focusMonitor") strip.run(Hypr.focusMonitor(String(m.name)))
+    else if (action === "focusWorkspace") strip.run(Hypr.focusWorkspace(id))
+    else if (action === "focusWorkspaceOn") strip.run(Hypr.focusWorkspaceOn(id, String(m.name)))
   }
 
   // A wheel notch moves one workspace along this monitor's; touchpad deltas
@@ -269,6 +268,8 @@ Item {
         readonly property bool interactive: true
         readonly property bool pressable: true
         readonly property bool concealed: false
+        // Set by the bar while it holds a press on this pill: press feedback.
+        property int heldButtons: Qt.NoButton
         property var registeredBar: null
 
         function triggerPress(button) {
@@ -311,6 +312,12 @@ Item {
         Grid {
           id: content
           anchors.centerIn: parent
+          // Gives a little while pressed, as Omarchy's own buttons do: only the
+          // contents shrink, so the pill and its hit area hold still.
+          scale: pill.heldButtons & Qt.LeftButton ? 0.9 : 1
+          Behavior on scale {
+            NumberAnimation { duration: Style.duration(160); easing.type: Easing.Bezier; easing.bezierCurve: Style.easeOut }
+          }
           columns: strip.vertical ? 1 : 1 + pill.windows.shown.length + (pill.overflow > 0 ? 1 : 0)
           spacing: Style.space(6)
           horizontalItemAlignment: Grid.AlignHCenter

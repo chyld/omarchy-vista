@@ -112,6 +112,17 @@ function fitIcons(counts, maxIcons, sizes, budget) {
   return 0
 }
 
+// What clicking (or scrolling to) workspace `id` from a bar does, given the
+// bar's monitor: "none", "focusMonitor" (it is already shown there; only the
+// monitor needs focus), "focusWorkspace" (it exists, or the bar has no
+// monitor: show it where it lives), or "focusWorkspaceOn" (create it on the
+// bar's monitor). `monitor` is { activeId, focused } or null; `exists` is
+// whether the workspace exists anywhere.
+function pillAction(id, monitor, exists) {
+  if (monitor && Number(monitor.activeId) === Number(id)) return monitor.focused ? "none" : "focusMonitor"
+  return exists || !monitor ? "focusWorkspace" : "focusWorkspaceOn"
+}
+
 // Whether two id lists hold the same ids in the same order. The strip only
 // replaces its Repeater model when they don't.
 function sameList(a, b) {
