@@ -110,6 +110,11 @@ Requirements: Omarchy 4 (omarchy-shell) with the Hyprland Lua config.
 | Scroll over the strip | move to the previous / next workspace on that bar's monitor (stops at the ends) |
 | Click the gear | open Vista's settings |
 
+Clicking or scrolling leaves the mouse pointer on the bar. It moves only when
+the workspace or window ends up on another monitor (one on the other screen,
+or a new workspace a workspace rule sends there), and then it goes where
+Hyprland would normally put it.
+
 Each pill is one workspace: its number, then an icon for each window on it
 (up to five, three on a vertical bar, then `+N`; fewer when the strip would run too long for the screen). The workspace a monitor shows is outlined in your
 theme's accent on that monitor's bar, and faintly on the others; the focused
@@ -154,8 +159,8 @@ Settings are saved on Vista's bar entry in `~/.config/omarchy/shell.json`, throu
   - app icons from desktop entries and the icon theme
   - the current Omarchy wallpaper at `~/.local/state/omarchy/current/background`
 - **Commands:** all run with an argument list, never through a shell. Every one is `/usr/bin/hyprctl` except the notification below.
-  - `dispatch` to switch workspace, to move a pinned workspace onto its monitor, and, from the bar, to focus a window or a monitor you click.
-  - `eval` from the bar to focus a monitor and then a workspace that doesn't exist yet, so it's created on that monitor.
+  - `dispatch` to switch workspace from the switcher and to move a pinned workspace onto its monitor.
+  - `eval` for each click or scroll on the bar: it turns Hyprland's `cursor:no_warps` and `cursor:warp_on_change_workspace` off, focuses the workspace, window or monitor (for a new workspace, the bar's monitor first, so it's created there), and puts your two values back, all in one call. If focus landed on another monitor, it then moves the pointer there itself, unless your own settings turn warps off. Nothing is written to a file; `hyprctl getoption` may show the two options as `set` afterwards. If the options can't be read or set, the click is a plain focus.
   - `eval` to ask whether Super is still held. It runs only while the switcher is open, one query at a time, for at most 30 seconds per opening.
   - `eval` to add a workspace rule for each pin.
   - `reload` when you unpin a workspace, then `workspacerules -j` to move it back to the monitor your own config names.

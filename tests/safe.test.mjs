@@ -123,20 +123,79 @@ test("outputName accepts connector names only", () => {
     assert.equal(Safe.outputName(bad), "", JSON.stringify(bad))
 })
 
-test("strip commands focus a window, a monitor, or a new workspace on a monitor", () => {
+test("focusWindow is a plain dispatch of a validated address", () => {
   assert.deepEqual(Array.from(Hypr.focusWindow("556e062addd0")),
     ["/usr/bin/hyprctl", "dispatch", 'hl.dsp.focus({ window = "address:0x556e062addd0" })'])
-  assert.deepEqual(Array.from(Hypr.focusMonitor("HDMI-A-1")),
-    ["/usr/bin/hyprctl", "dispatch", 'hl.dsp.focus({ monitor = "HDMI-A-1" })'])
-  assert.deepEqual(Array.from(Hypr.focusWorkspaceOn(4, "eDP-1")),
-    ["/usr/bin/hyprctl", "eval",
-     'hl.dispatch(hl.dsp.focus({ monitor = "eDP-1" }))\nhl.dispatch(hl.dsp.focus({ workspace = "4" }))'])
   assert.equal(Hypr.focusWindow('0x1" }) os.execute("x") --'), null)
   assert.equal(Hypr.focusWindow("address:0x1"), null)
-  assert.equal(Hypr.focusMonitor('eDP-1" })'), null)
-  assert.equal(Hypr.focusMonitor("desc:Panel"), null)
-  assert.equal(Hypr.focusWorkspaceOn(0, "eDP-1"), null)
-  assert.equal(Hypr.focusWorkspaceOn(4, "bad name"), null)
+})
+
+// The body of go() in a bar eval: the dispatches, one per line.
+function goBody(lua) {
+  const m = /\nlocal function go\(\)\n([\s\S]*?)\nend\n/.exec(lua)
+  return m ? m[1].split("\n").map(l => l.trim()) : null
+}
+
+test("bar commands dispatch inside one eval that keeps the pointer", () => {
+  const cases = [
+    [Hypr.barFocusWorkspace(3, "HDMI-A-1"), "HDMI-A-1", ['hl.dispatch(hl.dsp.focus({ workspace = "3" }))']],
+    [Hypr.barFocusMonitor("eDP-1"), "eDP-1", ['hl.dispatch(hl.dsp.focus({ monitor = "eDP-1" }))']],
+    [Hypr.barFocusWorkspaceOn(4, "eDP-1"), "eDP-1",
+      ['hl.dispatch(hl.dsp.focus({ monitor = "eDP-1" }))', 'hl.dispatch(hl.dsp.focus({ workspace = "4" }))']],
+    [Hypr.barFocusWindow("556e062addd0", "HDMI-A-1"), "HDMI-A-1",
+      ['hl.dispatch(hl.dsp.focus({ window = "address:0x556e062addd0" }))']],
+  ]
+  for (const [argv, bar, dispatches] of cases) {
+    assert.equal(argv.length, 3)
+    assert.equal(argv[0], "/usr/bin/hyprctl")
+    assert.equal(argv[1], "eval")
+    const lua = argv[2]
+    assert.ok(lua.startsWith(`local bar = "${bar}"\n`), lua)
+    assert.deepEqual(goBody(lua), dispatches)
+    // A bare dispatcher does nothing in an eval: every focus is inside hl.dispatch.
+    assert.ok(!/^\s*hl\.dsp\./m.test(lua), "bare dispatcher")
+    // Falls back to a plain dispatch when the options can't be read or set.
+    assert.match(lua, /if type\(get\) ~= "function" or type\(set\) ~= "function" then return go\(\) end/)
+    assert.match(lua, /if type\(nw\) ~= "boolean" or type\(wc\) ~= "number" then return go\(\) end/)
+    assert.match(lua, /if not put\(true, 0\) then put\(nw, wc\) return go\(\) end/)
+    // The dispatch runs under pcall, and the user's own values are what is restored.
+    assert.match(lua, /\nlocal ok, err = pcall\(go\)\nlocal restored = put\(nw, wc\)\n/)
+    assert.ok(!/put\(false|put\(nw, 1\)|warp_on_change_workspace = 1/.test(lua), "literal restore")
+    // The pointer is moved only after landing on another monitor, and only if
+    // the user's settings would have warped.
+    assert.match(lua, /if ok and \(not nw or wc == 2\) then/)
+    assert.match(lua, /if not m or m\.name == bar then return end/)
+    assert.match(lua, /error\("vista: " \.\. tostring\(err\)\)/)
+  }
+})
+
+test("bar commands validate every value and fall back without a bar monitor", () => {
+  // No known bar monitor: today's plain dispatch, or nothing where one is needed.
+  assert.deepEqual(Array.from(Hypr.barFocusWorkspace(3, "")), Array.from(Hypr.focusWorkspace(3)))
+  assert.deepEqual(Array.from(Hypr.barFocusWindow("0x1a", "")), Array.from(Hypr.focusWindow("0x1a")))
+  assert.equal(Hypr.barFocusMonitor(""), null)
+  assert.equal(Hypr.barFocusWorkspaceOn(4, ""), null)
+  for (const bar of ['eDP-1" })', "desc:Panel", "bad name", "a\nb", "]]", null, undefined, 1]) {
+    assert.deepEqual(Array.from(Hypr.barFocusWorkspace(3, bar)), Array.from(Hypr.focusWorkspace(3)), String(bar))
+    assert.equal(Hypr.barFocusMonitor(bar), null, String(bar))
+    assert.equal(Hypr.barFocusWorkspaceOn(4, bar), null, String(bar))
+  }
+  for (const id of [0, 51, "3) os.execute('x') --", "3\n", null]) {
+    assert.equal(Hypr.barFocusWorkspace(id, "eDP-1"), null, String(id))
+    assert.equal(Hypr.barFocusWorkspaceOn(id, "eDP-1"), null, String(id))
+  }
+  for (const a of ['0x1" }) os.execute("x") --', "address:0x1", "0x1\n", "", null])
+    assert.equal(Hypr.barFocusWindow(a, "eDP-1"), null, String(a))
+})
+
+test("barAction maps every pillAction result", () => {
+  assert.equal(Hypr.barAction("none", 3, "eDP-1"), null)
+  assert.equal(Hypr.barAction("bogus", 3, "eDP-1"), null)
+  assert.equal(Hypr.barAction(undefined, 3, "eDP-1"), null)
+  assert.deepEqual(Array.from(Hypr.barAction("focusMonitor", 3, "eDP-1")), Array.from(Hypr.barFocusMonitor("eDP-1")))
+  assert.deepEqual(Array.from(Hypr.barAction("focusWorkspace", 3, "eDP-1")), Array.from(Hypr.barFocusWorkspace(3, "eDP-1")))
+  assert.deepEqual(Array.from(Hypr.barAction("focusWorkspaceOn", 4, "eDP-1")), Array.from(Hypr.barFocusWorkspaceOn(4, "eDP-1")))
+  assert.deepEqual(Array.from(Hypr.barAction("focusWorkspace", 3, "")), Array.from(Hypr.focusWorkspace(3)))
 })
 
 test("a markup-shaped window title is plain text in the strip's tooltip", () => {

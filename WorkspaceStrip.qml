@@ -60,6 +60,10 @@ Item {
     return Hyprland.focusedMonitor
   }
 
+  // This bar's monitor as an output name, or "" when unknown. Clicks from a
+  // known monitor leave the pointer on the bar (Hypr.bar*).
+  readonly property string barOutput: strip.monitor ? Safe.outputName(String(strip.monitor.name)) : ""
+
   // Bumped after each refresh: lastIpcObject (the window class) changes only
   // when Hyprland's model is refreshed, which nothing else would notify.
   property int revision: 0
@@ -146,13 +150,12 @@ Item {
   // Switch to a workspace from this bar. One already shown here only needs
   // this monitor focused; an existing one is shown where it lives (focus
   // follows, as with the switcher); a new one is created on this monitor.
+  // The pointer stays on the bar unless focus lands on another monitor.
   function activate(id) {
     var m = strip.monitor
     var action = Strip.pillAction(id, m ? { activeId: m.activeWorkspace ? m.activeWorkspace.id : -1, focused: m.focused === true } : null,
                                   strip.workspaceById(id) !== null)
-    if (action === "focusMonitor") strip.run(Hypr.focusMonitor(String(m.name)))
-    else if (action === "focusWorkspace") strip.run(Hypr.focusWorkspace(id))
-    else if (action === "focusWorkspaceOn") strip.run(Hypr.focusWorkspaceOn(id, String(m.name)))
+    strip.run(Hypr.barAction(action, id, strip.barOutput))
   }
 
   // A wheel notch moves one workspace along this monitor's; touchpad deltas
@@ -280,7 +283,7 @@ Item {
 
         function triggerPress(button) {
           if (button !== Qt.LeftButton) return
-          if (pill.hoveredAddress) strip.run(Hypr.focusWindow(pill.hoveredAddress))
+          if (pill.hoveredAddress) strip.run(Hypr.barFocusWindow(pill.hoveredAddress, strip.barOutput))
           else strip.activate(pill.workspaceId)
         }
 
