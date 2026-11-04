@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "chyld.vista",
   "name": "Vista",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "author": "Chyld Medford",
   "license": "MIT",
   "description": "See every workspace before you jump to it. Hold Super, tap Tab: a big live preview, app icons and a filmstrip of all your workspaces. Release to switch. In the bar, a workspace strip with the app icons on each workspace, plus one-click monitor pins.",
