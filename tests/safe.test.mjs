@@ -2,7 +2,8 @@
 // through. Run with: node --test tests/
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { readFileSync, existsSync } from "node:fs"
+import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import vm from "node:vm"
 
@@ -159,13 +160,26 @@ test("bar commands dispatch inside one eval that keeps the pointer", () => {
     assert.match(lua, /if type\(nw\) ~= "boolean" or type\(wc\) ~= "number" then return go\(\) end/)
     assert.match(lua, /if not put\(true, 0\) then put\(nw, wc\) return go\(\) end/)
     // The dispatch runs under pcall, and the user's own values are what is restored.
-    assert.match(lua, /\nlocal ok, err = pcall\(go\)\nlocal restored = put\(nw, wc\)\n/)
+    assert.match(lua, /\nlocal ok, err = pcall\(go\)\nlocal restored = put\(nw, wc\) and same\(\)\n/)
+    // The retry is read back too.
+    assert.match(lua, /\nif not restored then restored = put\(nw, wc\) and same\(\) end\n/)
+    assert.match(lua, /local function same\(\) return get\("cursor\.no_warps"\) == nw and get\("cursor\.warp_on_change_workspace"\) == wc end/)
     assert.ok(!/put\(false|put\(nw, 1\)|warp_on_change_workspace = 1/.test(lua), "literal restore")
     // The pointer is moved only after landing on another monitor, and only if
     // the user's settings would have warped.
     assert.match(lua, /if ok and \(not nw or wc == 2\) then/)
     assert.match(lua, /if not m or m\.name == bar then return end/)
     assert.match(lua, /error\("vista: " \.\. tostring\(err\)\)/)
+  }
+})
+
+// The generated Lua compiles, when a Lua compiler is installed.
+const luac = ["/usr/bin/luac", "/usr/bin/luac5.4"].find(p => existsSync(p))
+test("bar commands are valid Lua", { skip: luac ? false : "no luac installed" }, () => {
+  for (const argv of [Hypr.barFocusWorkspace(3, "HDMI-A-1"), Hypr.barFocusMonitor("eDP-1"),
+                      Hypr.barFocusWorkspaceOn(4, "eDP-1"), Hypr.barFocusWindow("0x1a", "eDP-1")]) {
+    const r = spawnSync(luac, ["-p", "-"], { input: argv[2], encoding: "utf8" })
+    assert.equal(r.status, 0, r.stderr)
   }
 })
 
