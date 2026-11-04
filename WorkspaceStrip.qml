@@ -61,8 +61,15 @@ Item {
   }
 
   // This bar's monitor as an output name, or "" when unknown. Clicks from a
-  // known monitor leave the pointer on the bar (Hypr.bar*).
-  readonly property string barOutput: strip.monitor ? Safe.outputName(String(strip.monitor.name)) : ""
+  // known monitor leave the pointer on the bar (Hypr.bar*). Only the bar's own
+  // screen counts: `monitor` falls back to the focused one without a screen,
+  // and comparing the focused monitor with itself would move the pointer off
+  // the bar; unknown gives Hyprland's plain dispatch instead.
+  readonly property string barOutput: {
+    var window = strip.QsWindow.window
+    var screen = window ? window.screen : null
+    return screen && strip.monitor ? Safe.outputName(String(strip.monitor.name)) : ""
+  }
 
   // Bumped after each refresh: lastIpcObject (the window class) changes only
   // when Hyprland's model is refreshed, which nothing else would notify.

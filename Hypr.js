@@ -31,13 +31,11 @@ function focusWindow(address) {
 // new workspace to another monitor. Any failure to read or set the options
 // falls back to a plain dispatch, so a click always switches.
 
-// `byWorkspace` is true when the focus is a workspace change: Hyprland warps for
-// that only when warp_on_change_workspace is on (2 forces it past no_warps). A
-// window or monitor focus warps unless no_warps is set.
-function stayLua(exprs, bar, byWorkspace) {
-  var warps = byWorkspace
-    ? "wc == 2 or (not nw and wc ~= 0 and wc ~= false)"
-    : "not nw or wc == 2"
+// Whether Hyprland would have warped to the other monitor is the same for every
+// strip dispatch (checked live on 0.56.2): yes unless no_warps is on, and even
+// then when warp_on_change_workspace is 2 (force). Moving to another monitor
+// warps by itself, whatever warp_on_change_workspace says.
+function stayLua(exprs, bar) {
   var lines = []
   for (var i = 0; i < exprs.length; i++) lines.push("  hl.dispatch(" + exprs[i] + ")")
   return [
@@ -53,15 +51,21 @@ function stayLua(exprs, bar, byWorkspace) {
     "local function put(a, b) return pcall(set, { cursor = { no_warps = a, warp_on_change_workspace = b } }) end",
     "local function same() return read(\"cursor.no_warps\") == nw and read(\"cursor.warp_on_change_workspace\") == wc end",
     "local function restore() return (put(nw, wc) and same()) or (put(nw, wc) and same()) end",
-    "if not put(true, 0) then",
+    "local function off()",
+    "  if not put(true, 0) then return false end",
+    "  local c = read(\"cursor.warp_on_change_workspace\")",
+    "  return read(\"cursor.no_warps\") == true and (c == 0 or c == false)",
+    "end",
+    "if not off() then",
     "  local back = same() or restore()",
-    "  go()",
+    "  local ok, err = pcall(go)",
+    "  if not ok then error(\"vista: \" .. tostring(err) .. (back and \"\" or \"; could not restore cursor warp options\")) end",
     "  if not back then error(\"vista: could not restore cursor warp options\") end",
     "  return",
     "end",
     "local ok, err = pcall(go)",
     "local restored = restore()",
-    "if ok and (" + warps + ") then",
+    "if ok and (not nw or wc == 2) then",
     "  pcall(function()",
     "    local m = hl.get_active_monitor()",
     "    if not m or m.name == bar then return end",
@@ -81,8 +85,8 @@ function stayLua(exprs, bar, byWorkspace) {
   ].join("\n")
 }
 
-function stay(exprs, bar, byWorkspace) {
-  return [HYPRCTL, "eval", stayLua(exprs, bar, byWorkspace === true)]
+function stay(exprs, bar) {
+  return [HYPRCTL, "eval", stayLua(exprs, bar)]
 }
 
 function workspaceExpr(ws) { return "hl.dsp.focus({ workspace = " + Safe.luaQuote(ws) + " })" }
@@ -95,15 +99,17 @@ function barFocusWorkspace(id, bar) {
   var ws = Safe.workspaceId(id)
   if (!ws) return null
   var mon = Safe.outputName(bar)
-  return mon ? stay([workspaceExpr(ws)], mon, true) : focusWorkspace(ws)
+  return mon ? stay([workspaceExpr(ws)], mon) : focusWorkspace(ws)
 }
 
 // Create a workspace on the bar's monitor (a workspace rule may still send it
-// elsewhere). Needs the bar's monitor.
+// elsewhere). Without a known bar monitor, the plain dispatch, which creates it
+// on the focused monitor.
 function barFocusWorkspaceOn(id, bar) {
   var ws = Safe.workspaceId(id)
+  if (!ws) return null
   var mon = Safe.outputName(bar)
-  return ws && mon ? stay([monitorExpr(mon), workspaceExpr(ws)], mon, true) : null
+  return mon ? stay([monitorExpr(mon), workspaceExpr(ws)], mon) : focusWorkspace(ws)
 }
 
 // Focus the bar's own monitor.
