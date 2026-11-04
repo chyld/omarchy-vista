@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="preview.png" alt="Vista: a large live preview of the selected workspace above a filmstrip of every workspace, next to the Vista settings panel" width="900">
+  <img src="preview.png" alt="Vista: the workspace bar with app icons on every workspace, above the Super+Tab switcher showing a large live preview and a filmstrip of every workspace" width="900">
 </p>
 
 ---
