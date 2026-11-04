@@ -31,7 +31,13 @@ function focusWindow(address) {
 // new workspace to another monitor. Any failure to read or set the options
 // falls back to a plain dispatch, so a click always switches.
 
-function stayLua(exprs, bar) {
+// `byWorkspace` is true when the focus is a workspace change: Hyprland warps for
+// that only when warp_on_change_workspace is on (2 forces it past no_warps). A
+// window or monitor focus warps unless no_warps is set.
+function stayLua(exprs, bar, byWorkspace) {
+  var warps = byWorkspace
+    ? "wc == 2 or (not nw and wc ~= 0 and wc ~= false)"
+    : "not nw or wc == 2"
   var lines = []
   for (var i = 0; i < exprs.length; i++) lines.push("  hl.dispatch(" + exprs[i] + ")")
   return [
@@ -49,7 +55,7 @@ function stayLua(exprs, bar) {
     "local ok, err = pcall(go)",
     "local restored = put(nw, wc) and same()",
     "if not restored then restored = put(nw, wc) and same() end",
-    "if ok and (not nw or wc == 2) then",
+    "if ok and (" + warps + ") then",
     "  pcall(function()",
     "    local m = hl.get_active_monitor()",
     "    if not m or m.name == bar then return end",
@@ -69,8 +75,8 @@ function stayLua(exprs, bar) {
   ].join("\n")
 }
 
-function stay(exprs, bar) {
-  return [HYPRCTL, "eval", stayLua(exprs, bar)]
+function stay(exprs, bar, byWorkspace) {
+  return [HYPRCTL, "eval", stayLua(exprs, bar, byWorkspace === true)]
 }
 
 function workspaceExpr(ws) { return "hl.dsp.focus({ workspace = " + Safe.luaQuote(ws) + " })" }
@@ -83,7 +89,7 @@ function barFocusWorkspace(id, bar) {
   var ws = Safe.workspaceId(id)
   if (!ws) return null
   var mon = Safe.outputName(bar)
-  return mon ? stay([workspaceExpr(ws)], mon) : focusWorkspace(ws)
+  return mon ? stay([workspaceExpr(ws)], mon, true) : focusWorkspace(ws)
 }
 
 // Create a workspace on the bar's monitor (a workspace rule may still send it
@@ -91,7 +97,7 @@ function barFocusWorkspace(id, bar) {
 function barFocusWorkspaceOn(id, bar) {
   var ws = Safe.workspaceId(id)
   var mon = Safe.outputName(bar)
-  return ws && mon ? stay([monitorExpr(mon), workspaceExpr(ws)], mon) : null
+  return ws && mon ? stay([monitorExpr(mon), workspaceExpr(ws)], mon, true) : null
 }
 
 // Focus the bar's own monitor.

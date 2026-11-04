@@ -167,7 +167,10 @@ test("bar commands dispatch inside one eval that keeps the pointer", () => {
     assert.ok(!/put\(false|put\(nw, 1\)|warp_on_change_workspace = 1/.test(lua), "literal restore")
     // The pointer is moved only after landing on another monitor, and only if
     // the user's settings would have warped.
-    assert.match(lua, /if ok and \(not nw or wc == 2\) then/)
+    const byWorkspace = /workspace = /.test(dispatches.join(" "))
+    assert.ok(lua.includes(byWorkspace
+      ? "\nif ok and (wc == 2 or (not nw and wc ~= 0 and wc ~= false)) then\n"
+      : "\nif ok and (not nw or wc == 2) then\n"), "warp condition")
     assert.match(lua, /if not m or m\.name == bar then return end/)
     assert.match(lua, /error\("vista: " \.\. tostring\(err\)\)/)
   }
@@ -254,6 +257,16 @@ test("bar evals behave as specified (simulated hl)", { skip: lua ? false : "no l
   assert.equal(simulate(ws, { active: "HDMI-A-1", nw: true, wc: 2 }).moves, "2400,540")
   r = simulate(ws, { active: "HDMI-A-1", nw: true, wc: 2 })
   assert.deepEqual([r.nw, r.wc], ["true", "2"])
+
+  // A workspace change moves the pointer only if Hyprland's workspace warp is
+  // on; a window focus only if no_warps is off.
+  const win = Hypr.barFocusWindow("0x1a", "eDP-1")[2]
+  assert.equal(simulate(ws, { active: "HDMI-A-1", wc: 0 }).moves, "")
+  assert.equal(simulate(ws, { active: "HDMI-A-1", wc: false }).moves, "")
+  assert.equal(simulate(ws, { active: "HDMI-A-1", wc: true }).moves, "2400,540")
+  assert.equal(simulate(win, { active: "HDMI-A-1", wc: 0 }).moves, "2400,540")
+  assert.equal(simulate(win, { active: "HDMI-A-1", nw: true, wc: 1 }).moves, "")
+  assert.equal(simulate(win, { active: "eDP-1" }).moves, "")
 
   // A boolean warp_on_change_workspace is kept and restored as it was.
   r = simulate(ws, { wc: true })
