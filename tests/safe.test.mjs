@@ -268,6 +268,14 @@ test("bar evals behave as specified (simulated hl)", { skip: lua ? false : "no l
   assert.equal(simulate(win, { active: "HDMI-A-1", nw: true, wc: 1 }).moves, "")
   assert.equal(simulate(win, { active: "eDP-1" }).moves, "")
 
+  // Focusing the bar's own monitor never moves the pointer.
+  const mon = Hypr.barFocusMonitor("eDP-1")[2]
+  r = simulate(mon, { active: "eDP-1" })
+  assert.deepEqual([r.ok, r.nw, r.wc, r.focusedUnder, r.moves], [true, "false", "1", "true/0", ""])
+  // No active monitor reported: no move, still restored.
+  r = simulate(ws, { active: "none" })
+  assert.deepEqual([r.ok, r.nw, r.wc, r.moves], [true, "false", "1", ""])
+
   // A boolean warp_on_change_workspace is kept and restored as it was.
   r = simulate(ws, { wc: true })
   assert.deepEqual([r.ok, r.nw, r.wc, r.focusedUnder], [true, "false", "true", "true/0"])
