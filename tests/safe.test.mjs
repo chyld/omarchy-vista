@@ -163,7 +163,9 @@ test("bar commands dispatch inside one eval that keeps the pointer", () => {
     assert.match(lua, /\nlocal ok, err = pcall\(go\)\nlocal restored = put\(nw, wc\) and same\(\)\n/)
     // The retry is read back too.
     assert.match(lua, /\nif not restored then restored = put\(nw, wc\) and same\(\) end\n/)
-    assert.match(lua, /local function same\(\) return get\("cursor\.no_warps"\) == nw and get\("cursor\.warp_on_change_workspace"\) == wc end/)
+    assert.match(lua, /local function same\(\) return read\("cursor\.no_warps"\) == nw and read\("cursor\.warp_on_change_workspace"\) == wc end/)
+    // Every option read is protected: a throwing getter can't stop the click.
+    assert.ok(!/[^.]\bget\("cursor/.test(lua), "unprotected read")
     assert.ok(!/put\(false|put\(nw, 1\)|warp_on_change_workspace = 1/.test(lua), "literal restore")
     // The pointer is moved only after landing on another monitor, and only if
     // the user's settings would have warped.
@@ -189,26 +191,30 @@ test("bar commands are valid Lua", { skip: luac ? false : "no luac installed" },
 // Runs a bar eval under a stand-in `hl` and reports what it did.
 const lua = ["/usr/bin/lua5.4", "/usr/bin/lua", "/usr/bin/lua5.5"].find(p => existsSync(p))
 function simulate(code, opts = {}) {
-  const o = { nw: false, wc: 1, active: "eDP-1", window: null, failConfig: false, failDispatch: false, ...opts }
+  const o = { nw: false, wc: 1, active: "eDP-1", window: null, failConfig: false, failDispatch: false,
+              failGet: "never", silentRestore: false, ...opts }
   const lit = v => v === null ? "nil" : typeof v === "string" ? JSON.stringify(v) : String(v)
   const win = o.window
     ? `{ at = { x = ${o.window.x}, y = ${o.window.y} }, size = { x = ${o.window.w}, y = ${o.window.h} }, monitor = { name = ${lit(o.window.monitor)} } }`
     : "nil"
   const harness = `
 local state = { nw = ${lit(o.nw)}, wc = ${lit(o.wc)} }
-local focused, moves, writes = {}, {}, 0
+local focused, moves, writes, reads = {}, {}, 0, 0
 local monitors = {
   ["eDP-1"] = { name = "eDP-1", x = 0, y = 0, width = 2880, height = 1620, scale = 2 },
   ["HDMI-A-1"] = { name = "HDMI-A-1", x = 1440, y = 0, width = 3840, height = 2160, scale = 2 },
 }
 hl = {
   get_config = function(k)
+    reads = reads + 1
+    if ${lit(o.failGet)} == "always" or (${lit(o.failGet)} == "after" and writes > 0) then error("get failed") end
     if k == "cursor.no_warps" then return state.nw end
     if k == "cursor.warp_on_change_workspace" then return state.wc end
   end,
   config = function(t)
     if ${o.failConfig} then error("config refused") end
     writes = writes + 1
+    if ${o.silentRestore} and writes > 1 then return end
     if t.cursor.no_warps ~= nil then state.nw = t.cursor.no_warps end
     if t.cursor.warp_on_change_workspace ~= nil then state.wc = t.cursor.warp_on_change_workspace end
   end,
@@ -285,6 +291,18 @@ test("bar evals behave as specified (simulated hl)", { skip: lua ? false : "no l
   assert.deepEqual([r.ok, r.focusedUnder, r.writes], [true, "nil/1", 0])
   r = simulate(ws, { failConfig: true })
   assert.deepEqual([r.ok, r.nw, r.wc, r.focusedUnder], [true, "false", "1", "false/1"])
+
+  // A getter that throws: still a plain switch.
+  r = simulate(ws, { failGet: "always" })
+  assert.deepEqual([r.ok, r.focusedUnder, r.writes], [true, "false/1", 0])
+  // A getter that throws on the read-back: the restore is reported as failed.
+  r = simulate(ws, { failGet: "after" })
+  assert.equal(r.ok, false)
+  assert.match(r.err, /could not restore/)
+  // Restores that return normally but don't apply are caught, not reported as success.
+  r = simulate(ws, { silentRestore: true })
+  assert.equal(r.ok, false)
+  assert.match(r.err, /could not restore/)
 
   // A failing dispatch still restores, and reports the error.
   r = simulate(ws, { failDispatch: true, active: "HDMI-A-1" })
