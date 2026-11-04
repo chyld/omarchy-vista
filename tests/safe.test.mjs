@@ -157,7 +157,7 @@ test("bar commands dispatch inside one eval that keeps the pointer", () => {
     assert.ok(!/^\s*hl\.dsp\./m.test(lua), "bare dispatcher")
     // Falls back to a plain dispatch when the options can't be read or set.
     assert.match(lua, /if type\(get\) ~= "function" or type\(set\) ~= "function" then return go\(\) end/)
-    assert.match(lua, /if type\(nw\) ~= "boolean" or type\(wc\) ~= "number" then return go\(\) end/)
+    assert.match(lua, /if type\(nw\) ~= "boolean" or \(type\(wc\) ~= "number" and type\(wc\) ~= "boolean"\) then return go\(\) end/)
     assert.match(lua, /if not put\(true, 0\) then put\(nw, wc\) return go\(\) end/)
     // The dispatch runs under pcall, and the user's own values are what is restored.
     assert.match(lua, /\nlocal ok, err = pcall\(go\)\nlocal restored = put\(nw, wc\) and same\(\)\n/)
@@ -181,6 +181,94 @@ test("bar commands are valid Lua", { skip: luac ? false : "no luac installed" },
     const r = spawnSync(luac, ["-p", "-"], { input: argv[2], encoding: "utf8" })
     assert.equal(r.status, 0, r.stderr)
   }
+})
+
+// Runs a bar eval under a stand-in `hl` and reports what it did.
+const lua = ["/usr/bin/lua5.4", "/usr/bin/lua", "/usr/bin/lua5.5"].find(p => existsSync(p))
+function simulate(code, opts = {}) {
+  const o = { nw: false, wc: 1, active: "eDP-1", window: null, failConfig: false, failDispatch: false, ...opts }
+  const lit = v => v === null ? "nil" : typeof v === "string" ? JSON.stringify(v) : String(v)
+  const win = o.window
+    ? `{ at = { x = ${o.window.x}, y = ${o.window.y} }, size = { x = ${o.window.w}, y = ${o.window.h} }, monitor = { name = ${lit(o.window.monitor)} } }`
+    : "nil"
+  const harness = `
+local state = { nw = ${lit(o.nw)}, wc = ${lit(o.wc)} }
+local focused, moves, writes = {}, {}, 0
+local monitors = {
+  ["eDP-1"] = { name = "eDP-1", x = 0, y = 0, width = 2880, height = 1620, scale = 2 },
+  ["HDMI-A-1"] = { name = "HDMI-A-1", x = 1440, y = 0, width = 3840, height = 2160, scale = 2 },
+}
+hl = {
+  get_config = function(k)
+    if k == "cursor.no_warps" then return state.nw end
+    if k == "cursor.warp_on_change_workspace" then return state.wc end
+  end,
+  config = function(t)
+    if ${o.failConfig} then error("config refused") end
+    writes = writes + 1
+    if t.cursor.no_warps ~= nil then state.nw = t.cursor.no_warps end
+    if t.cursor.warp_on_change_workspace ~= nil then state.wc = t.cursor.warp_on_change_workspace end
+  end,
+  dispatch = function(d)
+    if d.move then moves[#moves + 1] = d.move.x .. "," .. d.move.y return end
+    if ${o.failDispatch} then error("dispatch failed") end
+    focused[#focused + 1] = tostring(state.nw) .. "/" .. tostring(state.wc)
+  end,
+  dsp = { focus = function(a) return { focus = a } end, cursor = { move = function(a) return { move = a } end } },
+  get_active_monitor = function() return monitors[${lit(o.active)}] end,
+  get_active_window = function() return ${win} end,
+}
+local ok, err = pcall(function()
+${code}
+end)
+print(table.concat({ tostring(ok), tostring(state.nw), tostring(state.wc), table.concat(focused, " "), table.concat(moves, " "), tostring(writes), ok and "" or tostring(err) }, "|"))
+`
+  const r = spawnSync(lua, ["-"], { input: harness, encoding: "utf8" })
+  assert.equal(r.status, 0, r.stderr)
+  const [ok, nw, wc, focusedUnder, moves, writes, err] = r.stdout.trim().split("|")
+  return { ok: ok === "true", nw, wc, focusedUnder, moves, writes: Number(writes), err }
+}
+
+test("bar evals behave as specified (simulated hl)", { skip: lua ? false : "no lua installed" }, () => {
+  const ws = Hypr.barFocusWorkspace(3, "eDP-1")[2]
+  const on = Hypr.barFocusWorkspaceOn(4, "eDP-1")[2]
+
+  // Lands on the bar's monitor: dispatched with warps off, restored, no move.
+  let r = simulate(ws, { active: "eDP-1" })
+  assert.deepEqual([r.ok, r.nw, r.wc, r.focusedUnder, r.moves], [true, "false", "1", "true/0", ""])
+  r = simulate(on, { active: "eDP-1" })
+  assert.equal(r.focusedUnder, "true/0 true/0")
+  assert.equal(r.moves, "")
+
+  // Lands elsewhere: the pointer goes to the focused window there, else the monitor's centre.
+  r = simulate(on, { active: "HDMI-A-1" })
+  assert.equal(r.moves, "2400,540")
+  r = simulate(ws, { active: "HDMI-A-1", window: { x: 1452, y: 38, w: 1896, h: 1031, monitor: "HDMI-A-1" } })
+  assert.equal(r.moves, "2400,554")
+  // A focused window on another monitor is not used.
+  r = simulate(ws, { active: "HDMI-A-1", window: { x: 10, y: 10, w: 100, h: 100, monitor: "eDP-1" } })
+  assert.equal(r.moves, "2400,540")
+
+  // The user's own warp settings decide whether it moves at all.
+  assert.equal(simulate(ws, { active: "HDMI-A-1", nw: true, wc: 1 }).moves, "")
+  assert.equal(simulate(ws, { active: "HDMI-A-1", nw: true, wc: 2 }).moves, "2400,540")
+  r = simulate(ws, { active: "HDMI-A-1", nw: true, wc: 2 })
+  assert.deepEqual([r.nw, r.wc], ["true", "2"])
+
+  // A boolean warp_on_change_workspace is kept and restored as it was.
+  r = simulate(ws, { wc: true })
+  assert.deepEqual([r.ok, r.nw, r.wc, r.focusedUnder], [true, "false", "true", "true/0"])
+
+  // Options that can't be read, or a config that refuses, still switch.
+  r = simulate(ws, { nw: null })
+  assert.deepEqual([r.ok, r.focusedUnder, r.writes], [true, "nil/1", 0])
+  r = simulate(ws, { failConfig: true })
+  assert.deepEqual([r.ok, r.nw, r.wc, r.focusedUnder], [true, "false", "1", "false/1"])
+
+  // A failing dispatch still restores, and reports the error.
+  r = simulate(ws, { failDispatch: true, active: "HDMI-A-1" })
+  assert.deepEqual([r.ok, r.nw, r.wc, r.moves], [false, "false", "1", ""])
+  assert.match(r.err, /vista: .*dispatch failed/)
 })
 
 test("bar commands validate every value and fall back without a bar monitor", () => {
