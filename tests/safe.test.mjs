@@ -158,11 +158,11 @@ test("bar commands dispatch inside one eval that keeps the pointer", () => {
     // Falls back to a plain dispatch when the options can't be read or set.
     assert.match(lua, /if type\(get\) ~= "function" or type\(set\) ~= "function" then return go\(\) end/)
     assert.match(lua, /if type\(nw\) ~= "boolean" or \(type\(wc\) ~= "number" and type\(wc\) ~= "boolean"\) then return go\(\) end/)
-    assert.match(lua, /if not put\(true, 0\) then put\(nw, wc\) return go\(\) end/)
+    assert.match(lua, /\nif not put\(true, 0\) then\n  local back = same\(\) or restore\(\)\n  go\(\)\n/)
     // The dispatch runs under pcall, and the user's own values are what is restored.
-    assert.match(lua, /\nlocal ok, err = pcall\(go\)\nlocal restored = put\(nw, wc\) and same\(\)\n/)
-    // The retry is read back too.
-    assert.match(lua, /\nif not restored then restored = put\(nw, wc\) and same\(\) end\n/)
+    assert.match(lua, /\nlocal ok, err = pcall\(go\)\nlocal restored = restore\(\)\n/)
+    // Each restore attempt, the retry included, counts only once read back.
+    assert.ok(lua.includes("local function restore() return (put(nw, wc) and same()) or (put(nw, wc) and same()) end"))
     assert.match(lua, /local function same\(\) return read\("cursor\.no_warps"\) == nw and read\("cursor\.warp_on_change_workspace"\) == wc end/)
     // Every option read is protected: a throwing getter can't stop the click.
     assert.ok(!/[^.]\bget\("cursor/.test(lua), "unprotected read")
@@ -192,7 +192,7 @@ test("bar commands are valid Lua", { skip: luac ? false : "no luac installed" },
 const lua = ["/usr/bin/lua5.4", "/usr/bin/lua", "/usr/bin/lua5.5"].find(p => existsSync(p))
 function simulate(code, opts = {}) {
   const o = { nw: false, wc: 1, active: "eDP-1", window: null, failConfig: false, failDispatch: false,
-              failGet: "never", silentRestore: false, ...opts }
+              failGet: "never", silentRestore: false, throwAfterFirstApply: false, ...opts }
   const lit = v => v === null ? "nil" : typeof v === "string" ? JSON.stringify(v) : String(v)
   const win = o.window
     ? `{ at = { x = ${o.window.x}, y = ${o.window.y} }, size = { x = ${o.window.w}, y = ${o.window.h} }, monitor = { name = ${lit(o.window.monitor)} } }`
@@ -217,6 +217,7 @@ hl = {
     if ${o.silentRestore} and writes > 1 then return end
     if t.cursor.no_warps ~= nil then state.nw = t.cursor.no_warps end
     if t.cursor.warp_on_change_workspace ~= nil then state.wc = t.cursor.warp_on_change_workspace end
+    if ${o.throwAfterFirstApply} and writes == 1 then error("applied, then failed") end
   end,
   dispatch = function(d)
     if d.move then moves[#moves + 1] = d.move.x .. "," .. d.move.y return end
@@ -302,6 +303,14 @@ test("bar evals behave as specified (simulated hl)", { skip: lua ? false : "no l
   // Restores that return normally but don't apply are caught, not reported as success.
   r = simulate(ws, { silentRestore: true })
   assert.equal(r.ok, false)
+  assert.match(r.err, /could not restore/)
+
+  // Turning warps off applies, then throws: put back and checked, then a plain switch.
+  r = simulate(ws, { throwAfterFirstApply: true })
+  assert.deepEqual([r.ok, r.nw, r.wc, r.focusedUnder], [true, "false", "1", "false/1"])
+  // ...and if that restore can't be confirmed, the switch still happens and the failure is reported.
+  r = simulate(ws, { throwAfterFirstApply: true, silentRestore: true })
+  assert.deepEqual([r.ok, r.focusedUnder], [false, "true/0"])
   assert.match(r.err, /could not restore/)
 
   // A failing dispatch still restores, and reports the error.
