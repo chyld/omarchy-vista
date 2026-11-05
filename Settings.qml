@@ -106,6 +106,7 @@ Panel {
     foreground: root.barForeground
     workspaceCount: root.workspaceCount
     showIcons: root.value("showIcons") === true
+    showNumbers: root.value("showNumbers") === true
     settingsOpen: root.opened
     onSettingsRequested: root.toggle()
   }
@@ -439,6 +440,7 @@ Panel {
           Repeater {
             model: [
               { key: "showIcons", label: "App icons", hint: "In the bar and the switcher" },
+              { key: "showNumbers", label: "Workspace numbers", hint: "In the bar" },
               { key: "showWallpaper", label: "Wallpaper", hint: "Behind every preview" },
               { key: "animations", label: "Animations", hint: "Fades and the sliding bar" }
             ]

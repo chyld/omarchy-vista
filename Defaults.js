@@ -8,6 +8,7 @@ var values = {
   thumbnailWidth: 180,
   gap: 16,
   showIcons: true,
+  showNumbers: true,
   showWallpaper: true,
   animations: true,
   // Workspace id -> monitor ("desc:<description>"). Unlisted workspaces

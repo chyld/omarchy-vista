@@ -31,6 +31,7 @@ Item {
   property color foreground: Color.foreground
   property int workspaceCount: 5
   property bool showIcons: true
+  property bool showNumbers: true
   property bool settingsOpen: false
   readonly property alias gear: gearButton
 
@@ -43,8 +44,8 @@ Item {
   readonly property int iconCap: strip.vertical ? Strip.MAX_ICONS_VERTICAL : Strip.MAX_ICONS
   readonly property real gap: Style.space(6)
 
-  implicitWidth: strip.vertical ? strip.barSize : pills.width + strip.gap + gearButton.width
-  implicitHeight: strip.vertical ? pills.height + strip.gap + gearButton.height : strip.barSize
+  implicitWidth: strip.vertical ? strip.barSize : pills.width + (strip.visibleIds.length > 0 ? strip.gap : 0) + gearButton.width
+  implicitHeight: strip.vertical ? pills.height + (strip.visibleIds.length > 0 ? strip.gap : 0) + gearButton.height : strip.barSize
 
   // ------------------------------------------------------------ model
 
@@ -85,6 +86,22 @@ Item {
   property var ids: []
   onFreshIdsChanged: if (!Strip.sameList(strip.ids, strip.freshIds)) strip.ids = strip.freshIds
 
+  // Pills actually drawn. With numbers shown, every workspace gets a pill.
+  // With numbers hidden, a pill with no icons to show would be an empty box,
+  // so only workspaces with something visible get one. With both numbers and
+  // icons off there is nothing to draw: no pills, just the gear.
+  readonly property var visibleIds: {
+    strip.revision
+    if (strip.showNumbers) return strip.ids
+    if (!strip.showIcons) return []
+    var out = []
+    for (var i = 0; i < strip.ids.length; i++) {
+      var ws = strip.workspaceById(strip.ids[i])
+      if (ws && ws.toplevels.values.length > 0) out.push(strip.ids[i])
+    }
+    return out
+  }
+
   // Existing workspace id -> its monitor's output name.
   readonly property var owners: {
     strip.revision
@@ -122,8 +139,8 @@ Item {
   readonly property var windowCounts: {
     strip.revision
     var counts = []
-    for (var i = 0; i < strip.ids.length; i++) {
-      var ws = strip.workspaceById(strip.ids[i])
+    for (var i = 0; i < strip.visibleIds.length; i++) {
+      var ws = strip.workspaceById(strip.visibleIds[i])
       counts.push(ws ? ws.toplevels.values.length : 0)
     }
     return counts
@@ -133,7 +150,7 @@ Item {
     var spacing = Style.space(6)
     var numberLength = strip.vertical ? Style.font.body * 1.3 : Style.font.body * 1.2
     return Strip.fitIcons(strip.windowCounts, strip.iconCap, {
-      fixed: strip.gap + (strip.vertical ? gearButton.height : gearButton.width) + Math.max(0, strip.ids.length - 1) * Style.space(4),
+      fixed: strip.gap + (strip.vertical ? gearButton.height : gearButton.width) + Math.max(0, strip.visibleIds.length - 1) * Style.space(4),
       pill: Style.space(16) + numberLength,
       icon: strip.iconSize + spacing,
       more: spacing + Style.font.caption * 1.6
@@ -252,11 +269,12 @@ Item {
     id: pills
     x: strip.vertical ? (strip.width - width) / 2 : 0
     y: strip.vertical ? 0 : (strip.height - height) / 2
-    columns: strip.vertical ? 1 : Math.max(1, strip.ids.length)
+    columns: strip.vertical ? 1 : Math.max(1, strip.visibleIds.length)
     spacing: Style.space(4)
+    visible: strip.visibleIds.length > 0
 
     Repeater {
-      model: strip.ids
+      model: strip.visibleIds
 
       Item {
         id: pill
@@ -334,12 +352,15 @@ Item {
           Behavior on scale {
             NumberAnimation { duration: Style.duration(160); easing.type: Easing.Bezier; easing.bezierCurve: Style.easeOut }
           }
-          columns: strip.vertical ? 1 : 1 + pill.windows.shown.length + (pill.overflow > 0 ? 1 : 0)
+          columns: strip.vertical ? 1 : (strip.showNumbers ? 1 : 0) + pill.windows.shown.length + (pill.overflow > 0 ? 1 : 0)
           spacing: Style.space(6)
           horizontalItemAlignment: Grid.AlignHCenter
           verticalItemAlignment: Grid.AlignVCenter
 
           Text {
+            visible: strip.showNumbers
+            width: strip.showNumbers ? implicitWidth : 0
+            height: strip.showNumbers ? implicitHeight : 0
             textFormat: Text.PlainText
             text: pill.key
             color: strip.foreground
@@ -426,8 +447,8 @@ Item {
 
   BarIconButton {
     id: gearButton
-    x: strip.vertical ? (strip.width - width) / 2 : pills.width + strip.gap
-    y: strip.vertical ? pills.height + strip.gap : (strip.height - height) / 2
+    x: strip.vertical ? (strip.width - width) / 2 : pills.width + (strip.visibleIds.length > 0 ? strip.gap : 0)
+    y: strip.vertical ? pills.height + (strip.visibleIds.length > 0 ? strip.gap : 0) : (strip.height - height) / 2
     bar: strip.bar
     text: "\u{f0493}"   // nf-md-cog
     tooltipText: strip.settingsOpen ? "" : "Vista settings"
